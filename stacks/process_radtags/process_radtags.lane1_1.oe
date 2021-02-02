@@ -1,0 +1,20 @@
+Processing paired-end data.
+Using Phred+33 encoding for quality scores.
+Found 1 paired input file(s).
+Searching for single-end, inlined barcodes.
+Loaded 24 barcodes (5bp).
+Will attempt to recover barcodes with at most 1 mismatches.
+Processing file 1 of 1 [P1_1_CKDL190143248-1a-1_H723VBBXX_L7_1.fq.gz]
+  Reading data from:
+  ../Rawdata/P1_1/P1_1_CKDL190143248-1a-1_H723VBBXX_L7_1.fq.gz and
+  ../Rawdata/P1_1/P1_1_CKDL190143248-1a-1_H723VBBXX_L7_2.fq.gz
+  Processing RAD-Tags...1M...2M...3M...4M...5M...6M...7M...8M...9M...10M...11M...12M...13M...14M...15M...16M...17M...18M...19M...20M...21M...22M...23M...24M...25M...26M...27M...28M...29M...30M...31M...32M...
+  64889234 total reads; -2430414 ambiguous barcodes; -1646975 ambiguous RAD-Tags; +4106684 recovered; -35581 low quality reads; 60776264 retained reads.
+Closing files, flushing buffers...
+Outputing details to log: '/scratch/phyletica/distichus/samples/process_radtags.P1_1.log'
+
+64889234 total sequences
+ 2430414 barcode not found drops (3.7%)
+   35581 low quality read drops (0.1%)
+ 1646975 RAD cutsite not found drops (2.5%)
+60776264 retained reads (93.7%)
