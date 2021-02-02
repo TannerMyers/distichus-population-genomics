@@ -5,4 +5,8 @@ sequencing/
 library_prep/
 writing/
 preliminary_sampling_spreadsheets/
-
+stacks/old/
+stacks/popmap.test_samples.tsv
+stacks/barcodes_complete_inventory.txt 
+stacks/.Rhistory 
+stacks/scripts/rundenovomap_old.sh  
