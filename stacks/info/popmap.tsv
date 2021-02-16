@@ -241,7 +241,7 @@ PM107	Bimini	biminiensis
 6537	578	properus
 5683	486	brevirostris
 866	82	ignigularis
-2350	porcatus
+2350	Cuba	porcatus
 4498	431	dom2
 6721	367	dom2
 1196	142	brevirostris
@@ -258,7 +258,7 @@ PM107	Bimini	biminiensis
 5856	525	brevirostris
 4547	433	dom2
 7368	643	brevirostris
-2412	porcatus
+2412	Cuba	porcatus
 5557	486	brevirostris
 5174	472	favillarum
 5138	471 brevirostris
@@ -270,7 +270,7 @@ PM107	Bimini	biminiensis
 6787	582	igprop
 6854	586	dom2
 7458	645	ravitergum
-2626	porcatus
+2626	Cuba	porcatus
 4486	430	dom2
 5591	485	ravitergum
 8845	885	favillarum
@@ -279,10 +279,10 @@ PM107	Bimini	biminiensis
 4475	426	dom2
 6341	380	ignigularis
 6719	367	dom2
-620 22	dom3
+620	22	dom3
 6340	380	ignigularis
 6685	366	ignigularis
 6357	380	ignigularis
-2388	porcatus
-2470	porcatus
+2388	Cuba	porcatus
+2470	Cuba	porcatus
 6772	366	ignigularis
