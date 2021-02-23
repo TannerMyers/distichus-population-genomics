@@ -59,6 +59,13 @@ for each value of M (1-9) being tested.
 
 	- I used this command to submit the script to the Hopper cluster: 
 	`qsub -N denovomaptest -q general -W group_list=jro0014_lab -W x=FLAGS:ADVRES:jro0014_lab -l walltime=48:00:00 run_denovomap.sh` 
+
+- Running `denovo_map.pl` on all samples:
+ 
+	myqsub -N denovomap3all -n -d /scratch/phyletica/distichus/scripts/ --ppn 10 --mem 20gb --time 200:00:00 <<< "./run_denovomap.sh 3"
+
+
+
 **Making Reference Genome database:**
  
 I downloaded the reference genome for *A. carolinensis* from the Ensembl database with the following line of code:
@@ -72,7 +79,9 @@ Check for potential file corruption:
 Following Rochette & Catchen (2017), I used `bwa index` to create a reference genome database:
 
 Run script `bwa_index.sh` to submit below command as job to Hopper 
-	`bwa index -p bwa/anocar $genome_fa &> bwa/bwa_index.oe`	
+	`bwa index -p bwa/anocar $genome_fa &> bwa/bwa_index.oe`
+	
+Once 	
 **References:**
 
 Li, H., and R. Durbin. 2009. Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics 25:1754–1760.
