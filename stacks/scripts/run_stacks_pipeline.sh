@@ -24,15 +24,7 @@ module load stacks
 id=1
 for sample in $SAMPLES 
 do
-	ustacks -f $SAMPLES/${sample}.1.fq.gz \
-		-i $id \
-		--name $sample 
-		-o $OUT_DIR \
-		-M $M \
-		-m $n \
-		-N $n \
-		--disable-gapped \
-		-p 8
+	ustacks -f $SAMPLE_DIR/${sample}.1.fq.gz -i $id --name $sample -o $OUT_DIR -M $M -m $n -N $n --disable-gapped -p 8
 	let "id+=1"
 done
 
