@@ -8,15 +8,18 @@ samplereads <- read.table("process_radtags/reads_per_sample.tsv", sep = "\t",
                           header = FALSE)
 
 samplereads <- samplereads[order(samplereads$V2),] # sort from fewest to most reads
+colnames(samplereads) <- c("Specimen", "Retained_Reads")
+
 
 # plot data
-plot(samplereads$V2, ylab = "Number of Retained Reads")
+plot(samplereads$Retained_Reads, ylab = "Number of Retained Reads", 
+    xlab = "Sample")
 
 # plot the 50 samples with the fewest reads
-plot(samplereads$V2[1:50])
+plot(samplereads$Retained_Reads[1:50])
 
 # plot the 16 samples with the fewest reads
-plot(samplereads$V2[1:16]) # 16 samples have fewer than 500K reads
+plot(samplereads$Specimen[1:16], samplereads$Retained_Reads[1:16]) # 16 samples have fewer than 500K reads
 
 head(samplereads,n=16)
 # Sample  Reads Taxon   Locality
