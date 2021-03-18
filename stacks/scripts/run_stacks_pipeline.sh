@@ -8,15 +8,13 @@
 ## between stacks within individuals and mismatches allowed between stacks
 ## between individuals
 M=$1
-n=$2
+n=$2 
+POP_MAP=$3
+OUT_DIR=$4
 
 SAMPLE_DIR=/scratch/phyletica/distichus/samples
 
-POP_MAP=/scratch/phyletica/distichus/info/popmap.tsv
-
 SAMPLES=`awk 'BEGIN {OFS = FS} {print $1}' $POP_MAP` 
-
-OUT_DIR=/scratch/phyletica/distichus/stacks.denovo/uncleaned.M4m3N3
 
 # Load 
 module load stacks
