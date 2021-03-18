@@ -84,6 +84,22 @@ Running stacks pipeline manually:
 
 myqsub -N stacks-pipelineM4n3 -n -d /scratch/phyletica/distichus/scripts/ --ppn 16 --mem 40gb --time 800:00:00 <<< "./run_stacks_pipeline.sh 4 3"
 
+**Run Stacks on individual populations:**
+
+Following the protocol of Cerca et al. (2021), I ran Stacks on individual groups to generate vcf files that could then be inspected for missing data to identify "bad apples". I generated seven population maps for distichoid anoles, one for each of the following lineages or group of lineages:
+
+* All *brevirostris* species group members
+* All Bahamian *subspecies* of *A. distichus*
+* *A. distichus* subspecies endemic to the Tiburon penninsula plus *A. d. dominicensis* 3 (Geneva et al. (2015))
+* All other lineages recognized as *A. d. dominicensis*
+* *A. d. ignigularis*, *A. d. properus*, and *A. d. sejunctus*
+* *A. d. ravitergum* and *A. altavelensis*
+* *A. d. favillarum*
+
+Some lineages were lumped together due to the small number of individuals in our sample pool.
+
+Stacks files are output to the **stacks.denovo/population-stacks.denovo/*/** directories
+
 **Making Reference Genome database:**
  
 I downloaded the reference genome for *A. carolinensis* from the Ensembl database with the following line of code:
@@ -99,8 +115,11 @@ Following Rochette & Catchen (2017), I used `bwa index` to create a reference ge
 Run script `bwa_index.sh` to submit below command as job to Hopper 
 	`bwa index -p bwa/anocar $genome_fa &> bwa/bwa_index.oe`
 	
-Once 	
+Once Stacks completed running, I aligned the consensus sequence of the catalog loci to the *A. carolinensis* reference I had indexed.	
+
 **References:**
+
+Cerca, J., M. F. Maurstad, N. C. Rochette, A. G. Rivera‐Colón, N. Rayamajhi, J. M. Catchen, and T. H. Struck. 2021. Removing the bad apples: a simple bioinformatic method to improve loci‐recovery in *de novo* RADseq data for non‐model organisms. Methods Ecol Evol. 
 
 Li, H., and R. Durbin. 2009. Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics 25:1754–1760.
 
