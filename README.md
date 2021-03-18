@@ -9,11 +9,15 @@ Workflow following Rochette & Catchen et al. (2017).
 
 **MODULES TO LOAD:**
 
-- stacks/2.5
-- bwa/0.7.17*
- 	* bwa necessary only for assembling reference genome database
-
-**process_radtags:**
+- stacks/2.55
+- vcftools/v0.1.17
+- bwa/0.7.17
+- python/3.6.4
+- samtools/1.7 
+	
+	\* samtools and python3 necessary for `stacks-integrate-alignments` 
+	
+**Demultiplex data with process_radtags:**
 
 The first step of stacks is **process_radtags**, which cleans and demultiplexes raw reads kept in fastq files obtained from Novogene.
 	
@@ -22,21 +26,27 @@ The first step of stacks is **process_radtags**, which cleans and demultiplexes 
 	- **Rawdata/** contains 12 subfolders, each of which contains 6 fastq files
 		- P1_1, P1_2, ... P3_4
 
-Run process_radtags by submitting the `demultiplex*_*.sh` in the **cleaned** directories corresponding to folders in **Rawdata/**
+Run process_radtags by submitting the `demultiplex*_*.sh` scripts corresponding to folders in **Rawdata/**
 
 - Barcode files containing sample IDs are found in **info/** directory
 	- Barcodes files for each lane were split into sets of 24, for the number of samples in each subfolder in **Rawdata/**, using the awk one-liner below:
 	`awk -v OFS='\t' '{ print $1, $2 }' barcodes_lane3.tsv`
 	`> temp && mv temp barcodes_lane3_2.tsv` 
 	
-- This command within `demultiplex_lane1_1.sh` runs **process_radtags**
+- This command within `demultiplex_lane1_1.sh` runs `process_radtags`
 
-`process_radtags -P -1 $filepath1 -2 $filepath2 -b $barcodes -o ./ \`
+		process_radtags 
 
-`--renz-1 sbfI --renz-2 mspI --inline_null -c -q -r \` 
-`&> process_radtags.lane1_1.oe`
+			-P -1 $filepath1 -2 $filepath2 
+			-b $barcodes 
+			-o ./ \
+			--renz-1 sbfI 
+			--renz-2 mspI 
+			--inline_null 
+			-c -q -r \ 
+			&> process_radtags.lane1_1.oe
 
-- Individual sample fastq files are output in the appropriate cleaned directory
+- Individual sample fastq files are output in the **samples/** directory
 
 
 Run `processradtags_results.sh` to print standard output and standard error from each process_radtags job, calculate
@@ -48,11 +58,17 @@ Then, run R script `proc_radtags_results.R` to plot retained reads per individua
 **Choose subset of samples to use for parameter testing:**
 
 To identify the combination of parameter values that yields the most loci for population genomic analyses, I used the
-wrapper Perl script, `denovo_map.pl`, on a subset of samples under different values of *M*, *m*, and *n*.
+wrapper `denovo_map.pl`, on a subset of samples under different values of *M* and *n*.
 Following Rochette & Catchen (2017), I created 9 directories in the folder **tests.denovo/** for each value of the 
 ustacks parameter, *M*, or the number of mismatches allowed between stacks to merge into a putative locus, named
-**stacks.M1**, **stacks.M2**, and so on. I then selected six samples with varying numbers of retained reads following
-**process_radtags** and stored them in their own population map file, `popmap.test_samples.tsv`. 
+**stacks.M1**, and so on. I then selected a dozen samples with varying numbers of retained reads following
+`process_radtags` and stored them in their own population map file, `popmap.test_samples.tsv`. 
+
+After the stacks pipeline completes, run the module `populations` using the `-R` flag set to 0.8, which requires all loci in the final dataset to occur across 80% of populations. I do this with its own script: `populations.R80.sh` and produce the file `populations.R80.tsv`.
+
+\***********Update after plotting R80 stats \*****************
+
+**Run Stacks for all samples:**
 
 Ready to run `denovo_map.pl`, I wrote the shell script, `run_denovomap.sh` that uses a for loop to submit denovo map
 for each value of M (1-9) being tested.
@@ -64,7 +80,9 @@ for each value of M (1-9) being tested.
  
 	myqsub -N denovomap3all -n -d /scratch/phyletica/distichus/scripts/ --ppn 10 --mem 20gb --time 200:00:00 <<< "./run_denovomap.sh 3"
 
+Running stacks pipeline manually:
 
+myqsub -N stacks-pipelineM4n3 -n -d /scratch/phyletica/distichus/scripts/ --ppn 16 --mem 40gb --time 800:00:00 <<< "./run_stacks_pipeline.sh 4 3"
 
 **Making Reference Genome database:**
  
