@@ -1,6 +1,6 @@
 setwd("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info")
 
-popmap <- read.table("../popmap.tsv", header=FALSE, sep="\t")
+popmap <- read.table("popmap.tsv", header=FALSE, sep="\t")
 
 # Only need lineage ID
 popmap <- popmap[,c(1,3)]
