@@ -10,17 +10,21 @@
 ##################################################################
 
 # Name variables 
-POP_DIR=/scratch/phyletica/distichus/stacks.denovo/population-stacks.denovo
+POP_DIR=/scratch/phyletica/distichus/stacks.denovo/population-stacks.denovo/
+
+POPULATIONS=`ls $POP_DIR`
 
 # Load modules
-module load vcftools 
+module load vcftools/v0.1.17          
 
 # Loop through directories containing Stacks outputs for individual 
 # populations to run vcftools 
-for pop in ; # Need to figure out how to iterate through directories list
+for pop in $POPULATIONS; 
     do 
-        cd $POP_DIR$pop
-        vcftools \ 
-            --vcf populations.snps.vcf \ 
-            --missing-indv 
+	# Move into directory containing Stacks output files for a given population.	
+	cd $POP_DIR$pop
+	
+	# Estimate % missing data for each individual in the population.
+	# This results in two output files: `out.imiss` and `out.log`
+        vcftools --vcf populations.snps.vcf --missing-indv 
     done
