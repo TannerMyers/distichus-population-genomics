@@ -26,9 +26,12 @@ for pop in $POPULATIONS;
 	
 		# Estimate % missing data for each individual in the population.
 		# This results in two output files: `out.imiss` and `out.log`
-        #vcftools --vcf populations.snps.vcf --missing-indv 
+        vcftools --vcf populations.snps.vcf --missing-indv 
 
 		# Extract individual IDs and % missing data to single file
-		#awk '{print $1, $5}' out.imiss >> $POP_DIR/missing_data_total
+		# The fifth field in `out.imiss` is titled `F_MISS` and contains the frequency of missing data 
+		# in each individual
+		MEAN_MISSING=`awk  -v "OFS=\t" 'NR>1 {print $5}' out.imiss | awk '{sum+=$1}END{print sum/NR}'`
+		awk -v x=$MEAN_MISSING '$5>x' out.imiss > bad_apples 
 
 	done
