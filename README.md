@@ -17,7 +17,7 @@ Workflow following Rochette & Catchen et al. (2017).
 	
 	\* samtools and python3 necessary for `stacks-integrate-alignments` 
 	
-**Demultiplex data with process_radtags:**
+## Demultiplex data with process_radtags:
 
 The first step of stacks is **process_radtags**, which cleans and demultiplexes raw reads kept in fastq files obtained from Novogene.
 	
@@ -55,7 +55,7 @@ Run `processradtags_results.sh` to print standard output and standard error from
 Then, run R script `proc_radtags_results.R` to plot retained reads per individual
 
 
-**Choose subset of samples to use for parameter testing:**
+## Choose subset of samples to use for parameter testing:
 
 To identify the combination of parameter values that yields the most loci for population genomic analyses, I used the
 wrapper `denovo_map.pl`, on a subset of samples under different values of *M* and *n*.
@@ -68,7 +68,7 @@ After the stacks pipeline completes, run the module `populations` using the `-R`
 
 \***********Update after plotting R80 stats \*****************
 
-**Run Stacks for all samples:**
+##Run Stacks for all samples:
 
 Ready to run `denovo_map.pl`, I wrote the shell script, `run_denovomap.sh` that uses a for loop to submit denovo map
 for each value of M (1-9) being tested.
@@ -80,42 +80,64 @@ for each value of M (1-9) being tested.
  
 	myqsub -N denovomap3all -n -d /scratch/phyletica/distichus/scripts/ --ppn 10 --mem 20gb --time 200:00:00 <<< "./run_denovomap.sh 3"
 
-Running stacks pipeline manually:
+- Running stacks pipeline manually:
 
-myqsub -N stacks-pipelineM4n3 -n -d /scratch/phyletica/distichus/scripts/ --ppn 16 --mem 40gb --time 800:00:00 <<< "./run_stacks_pipeline.sh 4 3"
+	myqsub -N stacks-pipelineM4n3 -n -d /scratch/phyletica/distichus/scripts/ --ppn 16 --mem 40gb --time 800:00:00 <<< "./run_stacks_pipeline.sh \**insert command line arguments here*\*"
+	
+	- Memory and time requested should vary. `populations` for the total number of individuals in our dataset needs a lot of memory.
+		
+	- `Stacks` components included in `run_stacks_pipeline.sh`:
+
+		- `ustacks`
+		- `cstacks`
+		- `sstacks`
+		- `tsv2bam`
+		- `gstacks`
+		- `bwa mem` to align the consensus catalog loci ('catalog.fa.gz') to the *Anolis carolinensis* reference genome
+		- `stacks-integrate-alignments`
+		- `populations`
+	
+	**Making Reference Genome database:**
+ 
+	I downloaded the reference genome for *A. carolinensis* from the Ensembl database with the following line of code:
+`rsync -av rsync://ftp.ensembl.org/ensembl/pub/release-101/fasta/anolis_carolinensis/dna/ .`
+Check for potential file corruption:
+
+	`sum * > sum.files.txt`
+
+	`diff sum.files.txt CHECKSUMS`
+
+	I used `bwa index` to create a reference genome database:
+
+	Run script `bwa_index.sh` to submit below command as job to Hopper 
+	`bwa index -p bwa/anocar $genome_fa &> bwa/bwa_index.oe`
+	
+	I aligned the consensus sequence of the catalog loci to the *A. carolinensis* reference I had indexed with `bwa mem` in the `run_stacks_pipeline.sh` script and integrated alignment information with the `Stacks` component `stacks-integrate-alignments`.	
+	
+## Filter individuals:
 
 **Run Stacks on individual populations:**
 
 Following the protocol of Cerca et al. (2021), I ran Stacks on individual groups to generate vcf files that could then be inspected for missing data to identify "bad apples". I generated seven population maps for distichoid anoles, one for each of the following lineages or group of lineages:
 
-* All *brevirostris* species group members
+* *brevirostris* 
 * All Bahamian *subspecies* of *A. distichus*
 * *A. distichus* subspecies endemic to the Tiburon penninsula plus *A. d. dominicensis* 3 (Geneva et al. (2015))
-* All other lineages recognized as *A. d. dominicensis*
-* *A. d. ignigularis*, *A. d. properus*, and *A. d. sejunctus*
-* *A. d. ravitergum* and *A. altavelensis*
+* *A. d. dominicensis* 1
+* *A. d. dominicensis* 2
+* *A. d. dominicensis* 4
+* *A. d. ignigularis* 
+* *A. d. properus*
+* *A. d. sejunctus*
+* *A. d. ravitergum* 
 * *A. d. favillarum*
+* Individuals from localities intermediate between *A. d. dominicensis* 1 and *A. d. dominicensis* 2, *A. d. ravitergum* and *A. d. ignigularis*, and *A. d. ignigularis* and *A. d. properus*. 
 
-Some lineages were lumped together due to the small number of individuals in our sample pool.
+Stacks files are output to the **stacks.denovo/population-stacks.denovo/*/** directories	
 
-Stacks files are output to the **stacks.denovo/population-stacks.denovo/*/** directories
+Run `individual-missing-data-assessment.sh` to loop through directories to run vcftools with the flag `--missing-indv` on the variant call format file "populations.snps.vcf" produced by `populations`, outputting the missing data information to a "bad_apples" file.
 
-**Making Reference Genome database:**
- 
-I downloaded the reference genome for *A. carolinensis* from the Ensembl database with the following line of code:
-`rsync -av rsync://ftp.ensembl.org/ensembl/pub/release-101/fasta/anolis_carolinensis/dna/ .`
-Check for potential file corruption:
-
-`sum * > sum.files.txt`
-
-`diff sum.files.txt CHECKSUMS`
-
-Following Rochette & Catchen (2017), I used `bwa index` to create a reference genome database:
-
-Run script `bwa_index.sh` to submit below command as job to Hopper 
-	`bwa index -p bwa/anocar $genome_fa &> bwa/bwa_index.oe`
-	
-Once Stacks completed running, I aligned the consensus sequence of the catalog loci to the *A. carolinensis* reference I had indexed.	
+I excluded individuals if they exceeded the average percent missing data for their population, unless their percentage of missing data was less than the dataset average of missing data.
 
 **References:**
 
