@@ -145,4 +145,8 @@ Cerca, J., M. F. Maurstad, N. C. Rochette, A. G. Rivera‐Colón, N. Rayamajhi, 
 
 Li, H., and R. Durbin. 2009. Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics 25:1754–1760.
 
-Rochette, N. C., and J. M. Catchen. 2017. Deriving genotypes from RAD-seq short-read data using Stacks. Nat Protoc 12:2640–2659..
+Paris, J. R., J. R. Stevens, and J. M. Catchen. 2017. Lost in parameter space: a road map for stacks. Methods Ecol Evol 8:1360–1373.
+
+Rochette, N. C., A. G. Rivera‐Colón, and J. M. Catchen. 2019. Stacks 2: analytical methods for paired‐end sequencing improve RADseq‐based population genomics. Mol Ecol 28:4737–4754.
+
+Rochette, N. C., and J. M. Catchen. 2017. Deriving genotypes from RAD-seq short-read data using Stacks. Nat Protoc 12:2640–2659.
