@@ -11,14 +11,16 @@
 #n=$2 
 #POP_MAP=$3
 #OUT_DIR=$4
+#POPULATION_DIR=$5
 POP_MAP=$1
 OUT_DIR=$2
+POPULATIONS_DIR=$3
 
 #SAMPLE_DIR=/scratch/phyletica/distichus/samples
 
 #SAMPLES=`awk 'BEGIN {OFS = FS} {print $1}' $POP_MAP`
 
-BWA_DB=/scratch/phyletica/distichus/genome/bwa/anocar
+#BWA_DB=/scratch/phyletica/distichus/genome/bwa/anocar
 
 # Load necessary modules 
 module load stacks
@@ -60,14 +62,19 @@ module load bwa
 #    -B $OUT_DIR/aligned_catalog.bam \
 #    -O $OUT_DIR/integrated-alignment
 
-populations -P $OUT_DIR -M $POP_MAP -t 8 --vcf 
-#       -R 0.65 \
-#       --min-mac 2 \
-#       --write-single-snp \
-#       --fasta-samples \
-#       --fasta-loci \
-#	--structure \
+populations -P \
+	-O $OUT_DIR \
+	-M $POP_MAP \
+	-t 8 \
+	-r 0.3 \
+	--min-mac 2 --write-single-snp \
+	--phylip-var \
+	--plink \
+	--structure
+#   -R 0.65 \
+#   --write-single-snp \
+#   --fasta-samples \
+#   --fasta-loci \
 #	--hwe \
 #	--fstats \
-#	--phylip-var \
-#	--plink	 
+#	--vcf	 
