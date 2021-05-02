@@ -32,6 +32,7 @@ for pop in $POPULATIONS;
 		# The fifth field in `out.imiss` is titled `F_MISS` and contains the frequency of missing data 
 		# in each individual
 		MEAN_MISSING=`awk  -v "OFS=\t" 'NR>1 {print $5}' out.imiss | awk '{sum+=$1}END{print sum/NR}'`
+		echo $MEAN_MISSING
 		awk -v x=$MEAN_MISSING '$5>x' out.imiss > bad_apples 
 
 	done
