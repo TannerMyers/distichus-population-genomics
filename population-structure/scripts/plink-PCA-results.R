@@ -58,4 +58,22 @@ cumsum(pve$pve)
 #[1]  20.38631  32.74326  41.78656  50.53304  57.10084  62.51664  66.69136  70.29149  73.78208  76.57601
 #[11]  79.27787  81.95778  84.46574  86.86103  89.14029  91.39055  93.61343  95.77361  97.91254 100.00000
 
+# Now plot principal components in a scatter plot
+
+# Make vector with color values 
+pop_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalblue4", "dom3"="royalblue4", 
+              "dom12"="coral4", "dom2"="coral4", 
+              "ignigularis"="chocolate1", "igprop"="chocolate1", "ravig"="yellow1", 
+              "properus"="grey68", "sejunctus"="grey68", 
+              "ravitergum"="yellow1", 
+              "dom1"="saddlebrown", "dom4"="saddlebrown", 
+              "favillarum"="darkorchid1", 
+              "distichus"="palegreen1", "distichoides"="palegreen1", "dapsilis"="palegreen1", "biminiensis"="palegreen1", "ocior"="palegreen1")
+
+# Plot first two principal components
+pc_plot <- ggplot(pca, aes(PC1, PC2, col=pop, )) + geom_point(size = 3) #+ geom_text(aes(label=Ind))  
+pc_plot <- pc_plot + coord_equal() + theme_light()
+pc_plot <- pc_plot + scale_color_manual(values = pop_cols) # Update values here
+
+
 
