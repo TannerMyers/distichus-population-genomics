@@ -62,19 +62,14 @@ module load bwa
 #    -B $OUT_DIR/aligned_catalog.bam \
 #    -O $OUT_DIR/integrated-alignment
 
-populations -P $OUT_DIR \
-	-O $POPULATIONS_DIR \
-	-M $POP_MAP \
-	-t 10 \
-	-r 0.3 \
+populations --in-path $OUT_DIR \
+	--out-path $POPULATIONS_DIR \
+	--popmap $POP_MAP \
+	--threads 10 \
+	-R 0.7 \
+	--ordered-export \
 	--min-mac 2 --write-single-snp \
-	--phylip-var \
-	--plink \
-	--structure
-#       -R 0.65 \
-#       --write-single-snp \
-#       --fasta-samples \
-#       --fasta-loci \
-#	--hwe \
-#	--fstats \
-#	--vcf	 
+	--vcf --plink --structure \
+#	--fasta-samples --fasta-loci 
+#	--genepop
+#	--vcf --plink
