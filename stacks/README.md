@@ -1,5 +1,7 @@
 # ***Anolis distichus*** ddRADseq Project
 
+## Assembly of ddRADseq Loci and Calling of Variants
+
 This file outlines the workflow of demultiplexing and cleaning fastq files, assembling cleaned
 and sorted fastq files into loci, and calling variants with the program Stacks. The data are ddRADseq data assembled for
 276 individuals of *Anolis distichus* collected across the island of Hispaniola, Hispaniola's satellite
