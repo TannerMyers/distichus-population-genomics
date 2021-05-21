@@ -13,26 +13,26 @@ for ((i=1; i<=100;i++));
 			-q gen28 \
 			-W group_list=jro0014_lab \
 			-W x=FLAGS:ADVRES:jro0014_s28 \
-			-l nodes=1:ppn=20,mem=100gb,walltime=24:00:00 <<<"
+			-l nodes=1:ppn=10,mem=100gb,walltime=24:00:00 <<<"
 
 				# Load modules
 				module load stacks
 
-				# Make a directory for this populations run's number 
+				# Make a directory for this populations run's number if it doesn't already exist 
 				[[ -d $POPULATIONS_DIR/Run$i ]] || mkdir -p $POPULATIONS_DIR/Run$i 
 
-				# Run populations to get plink (.ped) and .vcf files
+				# Run populations to get plink (.ped), structure, and .vcf files
 				populations --in-path $INPUT_DIR \
 					--out-path $POPULATIONS_DIR/Run$i \
 					--popmap $POP_MAP \
-					--threads \
+					--threads 10 \
 					-R 0.7 \
 					--ordered-export \
 					--write-random-snp \
 					--min-mac 2 \
 					--vcf --plink --structure
 
-				# Copy populations output files to directory that will contain the `populations`
+				# Copy populations output files to directory that will contain the populations
 				# output files for all datasets
 				cp $Run$i/populations.snps.vcf $POPULATIONS_DIR/Run$i.populations.snps.vcf
 				cp $Run$i/populations.plink.ped $POPULATIONS_DIR/Run$i.populations.plink.ped
