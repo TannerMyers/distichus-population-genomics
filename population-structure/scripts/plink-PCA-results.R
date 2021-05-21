@@ -15,8 +15,8 @@ library(tidyverse)
 ######################### Load data and clean #############################
 
 # Read in PCA results from plink
-pca <- read_table2("populations.r.7.nobrev.pca.eigenvec", col_names = FALSE)
-eigenvals <- scan("populations.r.7.nobrev.pca.eigenval")
+pca <- read_table2("populations.cleaned.R0.7.nobrevirostris.eigenvec", col_names = FALSE)
+eigenvals <- scan("populations.cleaned.R0.7.nobrevirostris.eigenval")
 
 # Clean up pca object
   ## Remove first individual identifier column. 
@@ -55,8 +55,6 @@ pve_plot + ylab("Percentage variance explained") + theme_light()
 
 # Calculate the cumulative sum of the percent variance explained
 cumsum(pve$pve)
-#[1]  20.38631  32.74326  41.78656  50.53304  57.10084  62.51664  66.69136  70.29149  73.78208  76.57601
-#[11]  79.27787  81.95778  84.46574  86.86103  89.14029  91.39055  93.61343  95.77361  97.91254 100.00000
 
 # Now plot principal components in a scatter plot
 
