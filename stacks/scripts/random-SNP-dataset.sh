@@ -39,5 +39,8 @@ for ((i=1; i<=100;i++));
 				cp $POPULATIONS_DIR/Run$i/populations.plink.map $POPULATIONS_DIR/run$i.populations.plink.map
 				cp $POPULATIONS_DIR/Run$i/populations.structure $POPULATIONS_DIR/run$i.populations.structure
 				cp $POPULATIONS_DIR/Run$i/populations.log $POPULATIONS_DIR/run$i.populations.log
+				
+				# Delete the directory made for this run
+				rm -rf $POPULATIONS_DIR/Run$i
 				"
 	done
