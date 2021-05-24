@@ -1,5 +1,6 @@
 */.Rhistory
 */*/.Rhistory
+population-structure/scripts/conStruct-input-file-conversion.R
 distichus-ddRADseq.code-workspace 
 Mello_2019_samples_lane_1_plate_order.xlsx
 Myers_Plate_Order_ddRADseq_Phylogeography.xlsx
@@ -15,3 +16,4 @@ stacks/info/*
 stacks/scripts/rundenovomap_old.sh 
 r80-stats.txt
 stacks/info/old/ 
+.Rproj.user
