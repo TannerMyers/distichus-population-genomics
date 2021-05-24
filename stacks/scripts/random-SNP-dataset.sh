@@ -34,9 +34,13 @@ for ((i=1; i<=100;i++));
 
 				# Copy populations output files to directory that will contain the populations
 				# output files for all datasets
-				cp $Run$i/populations.snps.vcf $POPULATIONS_DIR/Run$i.populations.snps.vcf
-				cp $Run$i/populations.plink.ped $POPULATIONS_DIR/Run$i.populations.plink.ped
-				cp $Run$i/populations.plink.map $POPULATIONS_DIR/Run$i.populations.plink.map
-				cp $Run$i/populations.structure $POPULATIONS_DIR/Run$i.populations.structure
+				cp $POPULATIONS_DIR/Run$i/populations.snps.vcf $POPULATIONS_DIR/run$i.populations.snps.vcf
+				cp $POPULATIONS_DIR/Run$i/populations.plink.ped $POPULATIONS_DIR/run$i.populations.plink.ped
+				cp $POPULATIONS_DIR/Run$i/populations.plink.map $POPULATIONS_DIR/run$i.populations.plink.map
+				cp $POPULATIONS_DIR/Run$i/populations.structure $POPULATIONS_DIR/run$i.populations.structure
+				cp $POPULATIONS_DIR/Run$i/populations.log $POPULATIONS_DIR/run$i.populations.log
+				
+				# Delete the directory made for this run
+				rm -rf $POPULATIONS_DIR/Run$i
 				"
 	done
