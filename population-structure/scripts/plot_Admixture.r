@@ -4,8 +4,8 @@
 ###################################################################
 
 # Change to your working directory
-working_dir <- getwd()
-setwd(working_dir)
+
+setwd("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/admixture/R0.7-nobrevirostris-admixture-results/")
 
 # Load library `stringr` for regex 
 # install.packages("stringr") # run once
@@ -14,12 +14,12 @@ library(tidyverse)
 
 # Load population map containing individual IDs and lineage information
 popmap <- read.table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info/popmap_cleaned_nobrev_Admixture.tsv", 
-                     sep="\t")
-colnames(popmap) <- c("Individual", "Population")
+                     sep="\t", header=TRUE)
+colnames(popmap) <- c("Individual", "Population", "Subspecies")
 
 # Create an object containing the different .Q extension files produced by Admixture for the below for loop to 
 # iterate over to generate barplots showing ancestry proportions
-files <- list.files(#path =
+files <- list.files(#path = "population-structure/admixture/R0.7-nobrevirostris-admixture-results/",
                     pattern = ".Q")
 
 # For each value of K, generate a bar plot to visualize ancestry proportions across individuals in dataset

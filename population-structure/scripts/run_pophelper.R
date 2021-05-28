@@ -20,7 +20,7 @@ packageDescription("pophelper", fields="Version")
 
 # Load population map containing individual IDs and lineage information
 popmap <- read.csv("stacks/info/popmap_cleaned_MacGuigan_no-brev_mapping.csv", 
-                   stringsAsFactors = FALSE)[,1:3]
+                   stringsAsFactors = FALSE)[,c(1,3:4)]
 colnames(popmap) <- c("Individual", "pop", "loc") # Add column names 
 
 sapply(popmap, is.character) # check if character data type
@@ -49,12 +49,12 @@ pops <- popmap[,2,drop=FALSE]
 
 plotQ(alist[c(15)], # 15 is for 9 clusters
       sortind = "all", # Order by clusters
-      showindlab = TRUE,
-      useindlab = TRUE,
+      showindlab = FALSE,
+      useindlab = FALSE,
       basesize = 10,
       #grplab = pops, indlabwithgrplab = TRUE,
       #grplabsize = 4, grplabface = "italic",
-      #linesize = 0.8, pointsize = 3,
+      linesize = 0.8, pointsize = 3,
       returnplot = TRUE,
       exportplot = FALSE) 
       #imgtype = "pdf", # set export file as pdf
