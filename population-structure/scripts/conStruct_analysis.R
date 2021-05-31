@@ -20,6 +20,7 @@ setwd("/gpfs01/home/tcm0036/distichus/population-structure/conStruct")
 
 ## Include the "lib.loc" argument is necessary to tell R on the cluster where to look for the installed package
 library(optparse)
+library(gtools, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 library(doParallel, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 library(Rcpp, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 library(RcppParallel, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
@@ -69,7 +70,9 @@ spRun.K <- conStruct(spatial = TRUE,
                   geoDist = tDist.mat,
                   coords = latlong,
 		  n.chains = 8,
-		  save.files = TRUE,
+		  n.iter = 10000,
+	          save.files = TRUE,
+		  make.figs = FALSE,
                   prefix = paste0("spK",k)) # update with value of K
 
 # perform non-spatial analysis
@@ -77,9 +80,11 @@ nspRun.K <- conStruct(spatial = FALSE,
                     K = as.numeric(k),
 		    freqs = freq,
                     geoDist = NULL,
-                    coords = coords,
+                    coords = latlong,
 		    n.chains = 8,
+		    n.iter = 10000,
 		    save.files = TRUE,
+		    make.figs = FALSE,
                     prefix = paste0("nspK",k)) # update with value of K
 
 }
