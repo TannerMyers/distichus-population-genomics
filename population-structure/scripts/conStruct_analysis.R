@@ -59,7 +59,6 @@ latlong <- as.matrix(latlong[, c('Longitude', 'Latitude')])
 class(latlong)
 
 # Loop over values of K, performing both spatial and non-spatial runs
-          
 
 for(k in 1:10){
 
