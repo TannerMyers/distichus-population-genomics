@@ -49,8 +49,8 @@ class(latlong)
 cl <- makeCluster(8, type="FORK")
 registerDoParallel(cl)
 
-my.xvals <- x.validation(train.prop = 0.9, 
-                test.prop = 0.1, 
+my.xvals <- x.validation(train.prop = 0.6, 
+                test.prop = 0.4, 
                 n.reps = 8,
                 K = 1:10, 
                 freqs = freq,
@@ -62,7 +62,7 @@ my.xvals <- x.validation(train.prop = 0.9,
                 make.figs = FALSE,
                 save.files = TRUE,
                 parallel = TRUE,
-                n.nodes = 
+                n.nodes = 8 
                 )
 
 stopCluster(cl)
