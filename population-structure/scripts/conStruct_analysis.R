@@ -61,31 +61,31 @@ class(latlong)
 # Loop over values of K, performing both spatial and non-spatial runs
           
 
-for(k in 1:10){
+#for(k in 1:10){
 
 # perform spatial analysis with conStruct
 spRun.K <- conStruct(spatial = TRUE,
-                  K = as.numeric(k), # update with value of K
-                  freqs = freq,
-                  geoDist = tDist.mat,
-                  coords = latlong,
-		  n.chains = 8,
-		  n.iter = 10000,
-	          save.files = TRUE,
-		  make.figs = FALSE,
-                  prefix = paste0("spK",k)) # update with value of K
+                K = as.numeric(k), # update with value of K
+                freqs = freq,
+                geoDist = tDist.mat,
+                coords = latlong,
+		        n.chains = 8,
+		        n.iter = 10000,
+	            save.files = TRUE,
+		        make.figs = FALSE,
+                prefix = paste0("spK",k)) # update with value of K
 
 # perform non-spatial analysis
 nspRun.K <- conStruct(spatial = FALSE,
-                    K = as.numeric(k),
-		    freqs = freq,
-                    geoDist = NULL,
-                    coords = latlong,
-		    n.chains = 8,
-		    n.iter = 10000,
-		    save.files = TRUE,
-		    make.figs = FALSE,
-                    prefix = paste0("nspK",k)) # update with value of K
+                K = as.numeric(k),
+		        freqs = freq,
+                geoDist = NULL,
+                coords = latlong,
+		        n.chains = 8,
+		        n.iter = 10000,
+		        save.files = TRUE,
+		        make.figs = FALSE,
+                prefix = paste0("nspK",k)) # update with value of K
 
 }
 
