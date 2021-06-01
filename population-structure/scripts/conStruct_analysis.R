@@ -61,7 +61,7 @@ class(latlong)
 # Loop over values of K, performing both spatial and non-spatial runs
           
 
-#for(k in 1:10){
+for(k in 1:10){
 
 # perform spatial analysis with conStruct
 spRun.K <- conStruct(spatial = TRUE,
