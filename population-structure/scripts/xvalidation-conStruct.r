@@ -12,7 +12,7 @@
 ###############
 
 # Change to your working directory
-setwd("/gpfs01/home/tcm0036/distichus/population-structure/conStruct")
+setwd("/gpfs01/home/tcm0036/distichus/population-structure/conStruct/xvalidation")
 
 # Load packages 
 ## Include the "lib.loc" argument is necessary to tell R on the cluster where to look for the installed package
@@ -33,14 +33,14 @@ library(rstan, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 library(conStruct, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 
 # Use processed structure file obtained by running "structure-to-conStruct.R"
-freq <- read.table("populations.distichusonly.R0.7.noBahamas.processed.str")
+freq <- read.table("../populations.distichusonly.R0.7.noBahamas.processed.str")
 freq <- as.matrix(freq)
 
 # Load geographic distance matrix generated with topoDistance package
-load(file = "ddRAD_topoDistance_geog_mat.rda") # object's name will be 'tDist.mat'
+load(file = "../ddRAD_topoDistance_geog_mat.rda") # object's name will be 'tDist.mat'
 
 # Load lat. and long. for sampling localities
-latlong <- read.csv("ddRAD_cleaned_Hispaniolan_distichus_localities.csv", # Update path here
+latlong <- read.csv("../ddRAD_cleaned_Hispaniolan_distichus_localities.csv", # Update path here
                    header=TRUE)
 latlong <- as.matrix(latlong[, c('Longitude', 'Latitude')])
 class(latlong)
