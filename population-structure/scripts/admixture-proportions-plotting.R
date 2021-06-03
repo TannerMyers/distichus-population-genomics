@@ -20,16 +20,16 @@ test <- read.table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/populati
 test2 <- cbind(popmap, test)
 
 # Sort rows by population identity
-test3 <- test2 %>% arrange(PopID)
+test3 <- test2 %>% arrange(K9Cluster)
 
+# Drop Bahamian samples
 test4 <- test3[test3$Island=="Hispaniola",] # to map only Hispaniolan taxa
 
-admix.props <- as.matrix(test3[,8:ncol(test3)])
-
-
+# Get dataframe of sorted admixture proportions
+admix.props <- as.matrix(test3[,9:ncol(test3)])
 
 # Use the "make.structure.plot" function from conStruct to plot admixture proportions
-pdf("K9.Admixprops.pdf")
+pdf("~/Desktop/K9.Admixprops.pdf")
 make.structure.plot(admix.props, sample.names = test3$PopID, mar = c(5,4,1.5,1.5))
 dev.off()
 
@@ -37,6 +37,7 @@ pdf("K9_pieplot.pdf")
 # Need to include dataframe with coords in long, lat (x, y) order for sampling localities
 #make.admix.pie.plot(admix.proportions = admix.props, coords = test3[,c(6,5)], radii=1)
 
+# Note: see R script in mapping directory to plot against bathymetric/topographic maps
 maps::map(xlim = range(test4$Longitude) 
           +c(-1,1), 
            ylim = range(test4$Latitude)

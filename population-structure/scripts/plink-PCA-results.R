@@ -29,7 +29,7 @@ names(pca)[1] <- "Ind"
 names(pca)[2:ncol(pca)] <- paste0("PC",1:(ncol(pca)-1))
 
 # Load metadata (lineage and locality) to add to `pca` object
-ind_data <- read.csv("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info/popmap_cleaned_MacGuigan_no-brev_mapping.csv")[,2:3]
+ind_data <- read.csv("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info/popmap_cleaned_MacGuigan_no-brev_mapping.csv")
 
   ## population
 pop <- ind_data$Subspecies
