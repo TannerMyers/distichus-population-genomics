@@ -33,8 +33,12 @@ library(rstan, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 library(conStruct, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 
 # Use processed structure file obtained by running "structure-to-conStruct.R"
-freq <- read.table("../populations.distichusonly.R0.7.noBahamas.processed.str")
-freq <- as.matrix(freq)
+#freq <- read.table("populations.distichusonly.R0.7.noBahamas.filtered.processed.str") # present in xvalidation directory
+#freq <- as.matrix(freq)
+
+# Load filtered STRUCTURE format file obtained by conversion in plink
+#<-  structure2conStruct("", onerowperind=TRUE, missing.datum=0, start.loci=3)
+load()
 
 # Load geographic distance matrix generated with topoDistance package
 load(file = "../ddRAD_topoDistance_geog_mat.rda") # object's name will be 'tDist.mat'
@@ -49,9 +53,9 @@ class(latlong)
 cl <- makeCluster(8, type="FORK")
 registerDoParallel(cl)
 
-my.xvals <- x.validation(train.prop = 0.6, 
-                test.prop = 0.4, 
-                n.reps = 8,
+my.xvals <- x.validation(train.prop = 0.8, 
+                test.prop = 0.2, 
+                n.reps = 3,
                 K = 1:10, 
                 freqs = freq,
                 geoDist = tDist.mat,
