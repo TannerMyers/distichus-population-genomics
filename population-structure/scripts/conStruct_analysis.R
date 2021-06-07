@@ -29,6 +29,7 @@ library(rstan, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 # the lib.loc argument is necessary to tell R on the cluster where to look for the installed package
     options(mc.cores = parallel::detectCores())
     rstan_options(auto_write = TRUE)
+library(rstantools, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 #library(devtools)
 #install_github("gbradburd/conStruct",build_vignettes=TRUE) # Run once
 library(conStruct, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
