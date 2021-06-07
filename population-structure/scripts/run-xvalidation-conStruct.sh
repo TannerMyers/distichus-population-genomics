@@ -8,7 +8,7 @@
 		-q gen28 \
 		-W group_list=jro0014_lab \
 		-W x=FLAGS:ADVRES:jro0014_s28 \
-		-l nodes=8:ppn=2,mem=80gb,walltime=250:00:00 <<<"
+		-l nodes=8:ppn=2,mem=110gb,walltime=250:00:00 <<<"
 	
 	# Load conda environment with R
 	source ~/miniconda3/etc/profile.d/conda.sh # Or path to where your conda is

@@ -39,7 +39,9 @@ library(conStruct, lib.loc="/home/tcm0036/miniconda3/envs/R_env/lib/R/library")
 # Load filtered STRUCTURE format file obtained by conversion in plink
 #<-  structure2conStruct(infile = "populations.snps.noBahamas.recode.filtered.recode.nohead.strct_in", 
 #			onerowperind=TRUE, missing.datum=0, start.loci=3, outfile="myconStructdata")
-load("myconStructdata.RData")
+#load("myconStructdata.RData")
+#load("conStruct.0.9.data.RData")
+load("conStruct.0.9.dropped.data.RData")
 
 # Load geographic distance matrix generated with topoDistance package
 load(file = "../ddRAD_topoDistance_geog_mat.rda") # object's name will be 'tDist.mat'
@@ -48,7 +50,6 @@ load(file = "../ddRAD_topoDistance_geog_mat.rda") # object's name will be 'tDist
 latlong <- read.csv("../ddRAD_cleaned_Hispaniolan_distichus_localities.csv", # Update path here
                    header=TRUE)
 latlong <- as.matrix(latlong[, c('Longitude', 'Latitude')])
-class(latlong)
 
 # 
 cl <- makeCluster(8, type="FORK")
