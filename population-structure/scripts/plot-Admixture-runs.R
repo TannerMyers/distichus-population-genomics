@@ -42,8 +42,19 @@ for (Q in files){
   ## Get dataframe of sorted admixture proportions
   admix.props <- as.matrix(df3[,9:ncol(df3)])
   
-  pdf(paste0("plots/",run,".",K,"barplot.pdf"))
+  #pdf(paste0("plots/",run,".",K,"barplot.pdf"))
   ## Make STRUCTURE barplots using the "make.structure.plot" from conStruct
-  make.structure.plot(admix.props, sample.names = df3$PopID, mar = c(5,4,1.5,1.5))
+  #make.structure.plot(admix.props, sample.names = df3$PopID, mar = c(5,4,1.5,1.5))
+  #dev.off()
+  
+  pdf(paste0("plots/",run,".",K,"pieplot.pdf"))
+  maps::map(xlim = range(test4$Longitude) 
+            +c(-1,1), 
+            ylim = range(test4$Latitude)
+            +c(-1,1), 
+            col="gray")
+  make.admix.pie.plot(admix.proportions = admix.props,
+                      coords = test3[,c(6,5)],
+                      add = TRUE, radii = 1)
   dev.off()
 }
