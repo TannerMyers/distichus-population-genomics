@@ -14,7 +14,7 @@
     BWA_DB=/scratch/phyletica/distichus/genome/bwa/ 
 
     # Directory containing demultiplexed fastq files from process_radtags
-    SAMPLE_DIR=/scratch/phyletica/distichus/samples
+    SAMPLE_DIR=/scratch/phyletica/distichus/samples/
 
     # Directory to output files produced by bwa mem
     OUT_DIR=/scratch/phyletica/distichus/alignments
@@ -40,9 +40,12 @@ for sample in $SAMPLES;
             conda activate genomics_env
     
             # Provide forward and reverse reads
-            READ1=$sample.1.fq.gz
-            READ2=$sample.2.fq.gz
+            READ1=$SAMPLE_DIR$sample.1.fq.gz
+            READ2=$SAMPLE_DIR$sample.2.fq.gz
 
-            bwa mem -t 8 $BWA_DB $READ1 $READ2
+            bwa mem -t 8 $BWA_DB \
+                $READ1 $READ2 \
+                2> $OUT_DIR/logs/$sample-bwa.err \
+                > $OUT_DIR/bwa-outputs/$sample.sam
             "
     done
