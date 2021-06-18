@@ -11,7 +11,7 @@
 
 # Name variables
     # Directory holding reference genome database for Anolis carolinensis
-    BWA_DB=/scratch/phyletica/distichus/genome/bwa/ 
+    BWA_DB=/scratch/phyletica/distichus/genome/bwa/anocar
 
     # Directory containing demultiplexed fastq files from process_radtags
     SAMPLE_DIR=/scratch/phyletica/distichus/samples/
@@ -28,12 +28,7 @@
 
 for sample in $SAMPLES; 
     do
-        qsub -N $sample.bwa \
-            -d /scratch/phyletica/distichus/scripts \
-            -q gen28 \
-		    -W group_list=jro0014_lab \
-            -W x=FLAGS:ADVRES:jro0014_s28 \
-    		-l nodes=1:ppn=8,mem=80gb,walltime=20:00:00 <<<"            
+        qsub -N $sample.bwa -d /scratch/phyletica/distichus/scripts -q gen28 -W group_list=jro0014_lab -W x=FLAGS:ADVRES:jro0014_s28 -l nodes=1:ppn=8,mem=80gb,walltime=20:00:00 <<<" 
 
             # Load conda environment with bwa
             source ~/miniconda3/etc/profile.d/conda.sh # Or path to where your conda is
@@ -43,9 +38,6 @@ for sample in $SAMPLES;
             READ1=$SAMPLE_DIR$sample.1.fq.gz
             READ2=$SAMPLE_DIR$sample.2.fq.gz
 
-            bwa mem -t 8 $BWA_DB \
-                $READ1 $READ2 \
-                2> $OUT_DIR/logs/$sample-bwa.err \
-                > $OUT_DIR/bwa-outputs/$sample.sam
+            bwa mem -t 8 /scratch/phyletica/distichus/genome/bwa/anocar $SAMPLE_DIR$sample.1.fq.gz $SAMPLE_DIR$sample.2.fq.gz -o $OUT_DIR/bwa-outputs/$sample.sam
             "
     done
