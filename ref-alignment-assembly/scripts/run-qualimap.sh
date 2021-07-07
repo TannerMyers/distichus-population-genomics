@@ -8,4 +8,7 @@
     source ~/mambaforge/etc/profile.d/conda.sh # Or path to where your conda is
     conda activate genomics_env
     	    	
-qualimap multi-bamqc --run-bamqc --data /scratch/phyletica/distichus/alignments/qualimap-input-information.tsv -gff /scratch/phyletica/distichus/genome/gtf/Anolis_carolinensis.AnoCar2.0v2.104.gtqualimap multi-bamqc --run-bamqc --data /scratch/phyletica/distichus/alignments/qualimap-input-information.tsv -gff /scratch/phyletica/distichus/genome/gtf/Anolis_carolinensis.AnoCar2.0v2.104.gtff
+qualimap multi-bamqc \
+	--run-bamqc \
+	--data /scratch/phyletica/distichus/alignments/qualimap-input-information.tsv \
+	--feature-file /scratch/phyletica/distichus/genome/gtf/Anolis_carolinensis.AnoCar2.0v2.104.gtf
