@@ -57,6 +57,12 @@ for sample in $SAMPLES;
 	    samtools view -b $OUT_DIR/bwa-outputs/$sample.sam -o $OUT_DIR/bam-files/$sample.bam 
 	    samtools sort -o $OUT_DIR/bam-files/$sample.sorted.bam $OUT_DIR/bam-files/$sample.bam
 	    samtools index $OUT_DIR/bam-files/$sample.sorted.bam
-        
-	    "
+
+       #  
+       bcftools mpileup -O b -o $OUT_DIR/results/bcf/$sample.raw.bcf-f $GENOME $OUT_DIR/bam-files/$sample.sorted.bam
+       bcftools call -m -v -o $OUT_DIR/results/bcf/$sample.variants.vcf $OUT_DIR/results/bcf/$sample.raw.bcf 
+	   vcfutils.pl varFilter $OUT_DIR/results/bcf/$sample.variants.vcf > $OUT_DIR/results/vcf/$sample_final_variants.vcf 
+       
+       # Run bcftools merge to obtain multi-sample vcf
+        "
     done
