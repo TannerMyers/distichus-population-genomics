@@ -59,6 +59,6 @@ for sample in $SAMPLES;
 #	    samtools index $OUT_DIR/bam-files/$sample.sorted.bam
 
         # Use Qualimap to assess quality of mapping data
-        qualimap bamqc -outdir $OUT_DIR/bam-files/qualimap -bam $OUT_DIR/bam-files/$sample.sorted.bam -gff /scratch/phyletica/distichus/genome/gtf/Anolis_carolinensis.AnoCar2.0v2.104.gtf.gz
+        qualimap bamqc -outdir $OUT_DIR/bam-files/qualimap -bam $OUT_DIR/bam-files/$sample.sorted.bam -gff /scratch/phyletica/distichus/genome/gtf/Anolis_carolinensis.AnoCar2.0v2.104.gtf
 	    "
     done
