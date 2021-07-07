@@ -46,19 +46,17 @@ for sample in $SAMPLES;
     	    	
 
             # Provide forward and reverse reads
- #           READ1=$SAMPLE_DIR$sample.1.fq.gz
- #           READ2=$SAMPLE_DIR$sample.2.fq.gz
+            READ1=$SAMPLE_DIR$sample.1.fq.gz
+            READ2=$SAMPLE_DIR$sample.2.fq.gz
 
 	    # Align paired read fastq files to the indexed Anolis carolinensis reference, obtaining individual .sam files 
-#        bwa mem -t 8 /scratch/phyletica/distichus/genome/bwa/anocar $SAMPLE_DIR$sample.1.fq.gz $SAMPLE_DIR$sample.2.fq.gz -o $OUT_DIR/bwa-outputs/$sample.sam
+        bwa mem -t 8 /scratch/phyletica/distichus/genome/bwa/anocar $SAMPLE_DIR$sample.1.fq.gz $SAMPLE_DIR$sample.2.fq.gz -o $OUT_DIR/bwa-outputs/$sample.sam
 	    ## Should be bwa mem -t 8 $BWA_DB $READ1 $READ2 -o $OUT_DIR/bwa-outputs/$sample.sam
 
 	    # Use samtools to convert to .bam, sort, and index
-#	    samtools view -b $OUT_DIR/bwa-outputs/$sample.sam -o $OUT_DIR/bam-files/$sample.bam 
-#	    samtools sort -o $OUT_DIR/bam-files/$sample.sorted.bam $OUT_DIR/bam-files/$sample.bam
-#	    samtools index $OUT_DIR/bam-files/$sample.sorted.bam
+	    samtools view -b $OUT_DIR/bwa-outputs/$sample.sam -o $OUT_DIR/bam-files/$sample.bam 
+	    samtools sort -o $OUT_DIR/bam-files/$sample.sorted.bam $OUT_DIR/bam-files/$sample.bam
+	    samtools index $OUT_DIR/bam-files/$sample.sorted.bam
 
-        # Use Qualimap to assess quality of mapping data
-        qualimap bamqc -outdir $OUT_DIR/bam-files/qualimap -bam $OUT_DIR/bam-files/$sample.sorted.bam -gff /scratch/phyletica/distichus/genome/gtf/Anolis_carolinensis.AnoCar2.0v2.104.gtf
 	    "
     done
