@@ -57,6 +57,6 @@ for sample in $SAMPLES;
 	    samtools view -b $OUT_DIR/bwa-outputs/$sample.sam -o $OUT_DIR/bam-files/$sample.bam 
 	    samtools sort -o $OUT_DIR/bam-files/$sample.sorted.bam $OUT_DIR/bam-files/$sample.bam
 	    samtools index $OUT_DIR/bam-files/$sample.sorted.bam
-
+        
 	    "
     done
