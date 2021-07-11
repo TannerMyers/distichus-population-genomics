@@ -27,6 +27,9 @@
     # Directory holding reference genome database for Anolis carolinensis
     BWA_DB=/scratch/phyletica/distichus/genome/bwa/anocar
 
+    # Assign variable for reference genome fasta
+    GENOME=/scratch/phyletica/distichus/genome/Anolis_carolinensis.AnoCar2.0.dna.toplevel.fa
+
     # Directory containing demultiplexed fastq files from process_radtags
     SAMPLE_DIR=/scratch/phyletica/distichus/samples/
 
@@ -38,31 +41,30 @@ for sample in $SAMPLES;
     do
         # For each sample, submit a job to align the reads to the indexed genome with BWA MEM, convert to .bam and sort with samtools,
         # and perform mapping QC with Qualimap.
-        qsub -N $sample.refalign.qualimap -d /scratch/phyletica/distichus/scripts -q gen28 -W group_list=jro0014_lab -W x=FLAGS:ADVRES:jro0014_s28 -l nodes=1:ppn=8,mem=80gb,walltime=12:00:00 <<<" 
+        qsub -N $sample.refalign.bcftools -d /scratch/phyletica/distichus/scripts -q gen28 -W group_list=jro0014_lab -W x=FLAGS:ADVRES:jro0014_s28 -l nodes=1:ppn=8,mem=80gb,walltime=12:00:00 <<<" 
 
             # Load conda environment with bwa, samtools, and qualimap
             source ~/mambaforge/etc/profile.d/conda.sh # Or path to where your conda is
             conda activate genomics_env
     	    	
-
             # Provide forward and reverse reads
             READ1=$SAMPLE_DIR$sample.1.fq.gz
             READ2=$SAMPLE_DIR$sample.2.fq.gz
 
 	    # Align paired read fastq files to the indexed Anolis carolinensis reference, obtaining individual .sam files 
-        bwa mem -t 8 /scratch/phyletica/distichus/genome/bwa/anocar $SAMPLE_DIR$sample.1.fq.gz $SAMPLE_DIR$sample.2.fq.gz -o $OUT_DIR/bwa-outputs/$sample.sam
+            #bwa mem -t 8 /scratch/phyletica/distichus/genome/bwa/anocar $SAMPLE_DIR$sample.1.fq.gz $SAMPLE_DIR$sample.2.fq.gz -o $OUT_DIR/bwa-outputs/$sample.sam
 	    ## Should be bwa mem -t 8 $BWA_DB $READ1 $READ2 -o $OUT_DIR/bwa-outputs/$sample.sam
 
 	    # Use samtools to convert to .bam, sort, and index
-	    samtools view -b $OUT_DIR/bwa-outputs/$sample.sam -o $OUT_DIR/bam-files/$sample.bam 
-	    samtools sort -o $OUT_DIR/bam-files/$sample.sorted.bam $OUT_DIR/bam-files/$sample.bam
-	    samtools index $OUT_DIR/bam-files/$sample.sorted.bam
+	    #samtools view -b $OUT_DIR/bwa-outputs/$sample.sam -o $OUT_DIR/bam-files/$sample.bam 
+	    #samtools sort -o $OUT_DIR/bam-files/$sample.sorted.bam $OUT_DIR/bam-files/$sample.bam
+	    #samtools index $OUT_DIR/bam-files/$sample.sorted.bam
 
-       #  
-       bcftools mpileup -O b -o $OUT_DIR/results/bcf/$sample.raw.bcf-f $GENOME $OUT_DIR/bam-files/$sample.sorted.bam
-       bcftools call -m -v -o $OUT_DIR/results/bcf/$sample.variants.vcf $OUT_DIR/results/bcf/$sample.raw.bcf 
+       	   # Use bcftools and vcfutils.pl to call variants and produce per-sample vcf files  
+           bcftools mpileup -O b -o $OUT_DIR/results/bcf/$sample.raw.bcf -f $GENOME $OUT_DIR/bam-files/$sample.sorted.bam
+      	   bcftools call -m -v -o $OUT_DIR/results/bcf/$sample.variants.vcf $OUT_DIR/results/bcf/$sample.raw.bcf 
 	   vcfutils.pl varFilter $OUT_DIR/results/bcf/$sample.variants.vcf > $OUT_DIR/results/vcf/$sample_final_variants.vcf 
        
-       # Run bcftools merge to obtain multi-sample vcf
+           # Run bcftools merge to obtain multi-sample vcf. Do after loop once all sample vcfs are generated
         "
     done
