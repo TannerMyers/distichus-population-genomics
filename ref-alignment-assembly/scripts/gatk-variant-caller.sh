@@ -30,10 +30,10 @@ GENOME=/scratch/phyletica/distichus/genome/Anolis_carolinensis.AnoCar2.0.dna.top
 ################################################################
 
 # Run HaplotypeCaller
+    ## This will generate individual level gVCF files
 for sample in $SAMPLES; 
     do
-        # For each sample, submit a job to align the reads to the indexed genome with BWA MEM, convert to .bam and sort with samtools,
-        # and perform mapping QC with Qualimap.
+        # For each sample, submit HaplotypeCaller run as a job.
         qsub -N $sample.GATK -d /scratch/phyletica/distichus/scripts -q gen28 -W group_list=jro0014_lab -W x=FLAGS:ADVRES:jro0014_s28 -l nodes=1:ppn=8,mem=80gb,walltime=12:00:00 <<<" 
         # Load conda environment with bwa, samtools, and qualimap
         source ~/mambaforge/etc/profile.d/conda.sh # Or path to where your conda is
@@ -43,6 +43,8 @@ for sample in $SAMPLES;
                 --reference $GENOME \
                 --input $BAM_DIR$sample.sorted.bam \
                 --output $VCF_DIR$sample.g.vcf.gz \
-                --emitRefConfidence GVCF
+                -ERC GVCF
         "
         done 
+
+# 
