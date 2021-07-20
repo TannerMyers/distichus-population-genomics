@@ -14,7 +14,7 @@
 # Name variables 
 BAM_DIR=/scratch/phyletica/distichus/alignments/bam-files/
 
-VCF_DIR=/scratch/phyletica/distichus/alignments/GATK/vcf/
+VCF_DIR=/scratch/phyletica/distichus/alignments/results/GATK/vcf/
 
 
 # Assign variable for reference genome fasta
