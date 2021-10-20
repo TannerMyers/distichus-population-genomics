@@ -42,7 +42,7 @@ for ID in $samples;
 	sorted_bam=/scratch/tcm0036/distichus-ddRAD/alignments/results/bam/$ID.aligned.sorted.bam
 
 	bwa mem -t 8 \$bwa_db \$fq1 \$fq2 > \$sam
-	samtools view -b \$sam > $bam
+	samtools view -b \$sam > \$bam
 	samtools sort -o \$sorted_bam \$bam
 	samtools index \$sorted_bam
 	"
