@@ -3,7 +3,8 @@
 #   performed by plink using the flag `--pca`                       #
 #####################################################################
 
-setwd("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/pca/plink/") # change to your working directory
+working_dir <- getwd()
+setwd(working_dir) # change to your working directory
 
 ###########################################################################
 
@@ -15,13 +16,27 @@ library(tidyverse)
 ######################### Load data and clean #############################
 
 # Read in PCA results from plink
-pca <- read_table2("populations.cleaned.R0.7.nobrevirostris.eigenvec", col_names = FALSE)
-eigenvals <- scan("populations.cleaned.R0.7.nobrevirostris.eigenval")
+pca <- read_table("variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenvec", col_names = FALSE)
+eigenvals <- read_table("variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenval", col_names = FALSE)
+## The second column, which would normally contain locality information instead repeats individual identifiers, 
+## except in the case of technical replicate samples. The parser did something odd there, recognizing the '_' between 
+## sample ID and 'rep' as a break so the entries with the second column just read as the rest of the file path beginning with 'rep'
 
-# Clean up pca object
-  ## Remove first individual identifier column. 
-  ## Cleaned locality & lineage info will be added shortly for plotting
-pca <- pca[,-1] 
+#pca <- read_table2("populations.cleaned.R0.7.nobrevirostris.eigenvec", col_names = FALSE) # For plink output of Stacks' assembled loci
+#eigenvals <- scan("populations.cleaned.R0.7.nobrevirostris.eigenval")
+
+# Clean up 'pca' object
+
+## Cleaning up the superfluous filepath information used in the popmap supplied to the variant calling script, leaving just sample IDs
+pca$X1 <- str_replace(pca$X1, "/scratch/tcm0036/distichus-ddRAD/alignments/results/bam/", "") %>% 
+          str_replace(".aligned.sorted.bam","")
+## Because the parser split up the filepaths for the techincal replicate samples, do this to reflect which ones are technical replicates
+pca$X1 <- with(pca, ifelse(X2=="rep.aligned.sorted.bam", paste0(X1,"_rep"), X1))
+
+## Remove first individual identifier column. 
+## Cleaned locality & lineage info will be added shortly for plotting
+#pca <- pca[,-1] 
+pca <- pca[,-2]
 
   ## Set names for columns. 
   ## The first column contains specimen IDs and the next 20 are principal components
@@ -29,18 +44,25 @@ names(pca)[1] <- "Ind"
 names(pca)[2:ncol(pca)] <- paste0("PC",1:(ncol(pca)-1))
 
 # Load metadata (lineage and locality) to add to `pca` object
-ind_data <- read.csv("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info/popmap_cleaned_MacGuigan_no-brev_mapping.csv")
-
-  ## population
-pop <- ind_data$Subspecies
+#ind_data <- read.csv("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info/popmap_cleaned_MacGuigan_no-brev_mapping.csv")
+ind_data <- read_table('~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ref-alignment-assembly/popmap-bcftools.tsv', col_names=FALSE)
+## population
+#pop <- ind_data$Subspecies
   ## locality
-loc <- ind_data$REG_Localities
+#loc <- ind_data$REG_Localities
+## repeat steps to clean sample IDs
+ind_data$X1 <- str_replace(ind_data$X1, "/scratch/tcm0036/distichus-ddRAD/alignments/results/bam/", "") %>% 
+          str_replace(".aligned.sorted.bam","")
+dropped <- !ind_data$X1%in%pca$Ind # these are the specimens dropped from variant filtering
+ind_data[dropped,] 
+ind_data <- ind_data[!dropped,]
+pop <- ind_data$X2
 
 # combine to plot in different colors ## may not be practical for as many as we have
-pop_loc <- paste0(pop, "_", loc)
+#pop_loc <- paste0(pop, "_", loc)
 
 # Remake `pca` dataframe
-pca <- as_tibble(data.frame(pca, pop, loc, pop_loc))
+pca <- as_tibble(data.frame(pca$Ind, pop, pca[,2:ncol(pca)]))#, loc, pop_loc))
 
 ###########################################################################
 
@@ -60,18 +82,36 @@ cumsum(pve$pve)
 
 # Make vector with color values 
 pop_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalblue4", "dom3"="royalblue4", 
-              "dom12"="coral4", "dom2"="coral4", 
+              "dom12"="coral4", "dom2"="firebrick", 
               "ignigularis"="chocolate1", "igprop"="chocolate1", "ravig"="yellow1", 
               "properus"="grey68", "sejunctus"="grey68", 
               "ravitergum"="yellow1", 
               "dom1"="saddlebrown", "dom4"="saddlebrown", 
               "favillarum"="darkorchid1", 
-              "distichus"="palegreen1", "distichoides"="palegreen1", "dapsilis"="palegreen1", "biminiensis"="palegreen1", "ocior"="palegreen1")
+              "distichus"="palegreen1", "distichoides"="palegreen1", "dapsilis"="palegreen1", "biminiensis"="palegreen1", "ocior"="palegreen1",
+              "altavelensis"="gray0", "brevirostris"="gray0", "caudalis"="gray0", "marron"="gray0", "websteri"="gray0")
+
+pop_shps <- c("aurifer"=21, "suppar"=21, "vinosus"=21, "dom3"=21, 
+              "dom12"=21, "dom2"=21, 
+              "ignigularis"=21, "igprop"=21, "ravig"=21, 
+              "properus"=21, "sejunctus"=21, 
+              "ravitergum"=21, 
+              "dom1"=21, "dom4"=21, 
+              "favillarum"=21, 
+              "distichus"=21, "distichoides"=21, "dapsilis"=21, "biminiensis"=21, "ocior"=21,
+              "altavelensis"=21, "brevirostris"=22, "caudalis"=23, "marron"=24, "websteri"=25)
 
 # Plot first two principal components
-pc_plot <- ggplot(pca, aes(PC1, PC2, col=pop, )) + geom_point(size = 3) #+ geom_text(aes(label=Ind))  
+pc_plot <- ggplot(pca, aes(PC1, PC2, col=pop, )) + geom_point(size = 3) #+ geom_text(aes(label=pca.Ind))#, aes(shape = pop_shps)) 
 pc_plot <- pc_plot + coord_equal() + theme_light()
-pc_plot <- pc_plot + scale_color_manual(values = pop_cols) # Update values here
+pc_plot <- pc_plot + scale_color_manual(values = pop_cols) 
+pc_plot
+
+pc_plot_23 <- ggplot(pca, aes(PC2, PC3, col=pop, )) + geom_point(size = 3)
+pc_plot_23 <- pc_plot_23 + coord_equal() + theme_light()
+pc_plot_23 <- pc_plot_23 + scale_color_manual(values = pop_cols) 
+pc_plot_23
+
 
 ggsave(filename = "PC1vPC2inclBahamas.pdf", pc_plot, device = "pdf")
 
@@ -120,8 +160,6 @@ pve_plot + ylab("Percentage variance explained") + theme_light()
 # Calculate the cumulative sum of the percent variance explained
 cumsum(pve$pve)
 
-# Now plot principal components in a scatter plot
-
 # Make vector with color values 
 pop_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalblue4", "dom3"="royalblue4", 
               "dom12"="coral4", "dom2"="coral4", 
@@ -136,5 +174,5 @@ pop_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalb
 pc_plot <- ggplot(pca, aes(PC1, PC2, col=pop, )) + geom_point(size = 3) #+ geom_text(aes(label=Ind))  
 pc_plot <- pc_plot + coord_equal() + theme_light()
 pc_plot <- pc_plot + scale_color_manual(values = pop_cols) # Update values here
-
+pc_plot
 ggsave(filename = "PC1vPC2noBahamas.pdf", pc_plot, device = "pdf")
