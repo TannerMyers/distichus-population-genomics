@@ -16,8 +16,8 @@ library(tidyverse)
 ######################### Load data and clean #############################
 
 # Read in PCA results from plink
-pca <- read_table("variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenvec", col_names = FALSE)
-eigenvals <- read_table("variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenval", col_names = FALSE)
+pca <- read_table("population-structure/pca/ref-alignment/variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenvec", col_names = FALSE)
+eigenvals <- read_table("population-structure/pca/ref-alignment/variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenval", col_names = FALSE)
 ## The second column, which would normally contain locality information instead repeats individual identifiers, 
 ## except in the case of technical replicate samples. The parser did something odd there, recognizing the '_' between 
 ## sample ID and 'rep' as a break so the entries with the second column just read as the rest of the file path beginning with 'rep'
@@ -45,24 +45,23 @@ names(pca)[2:ncol(pca)] <- paste0("PC",1:(ncol(pca)-1))
 
 # Load metadata (lineage and locality) to add to `pca` object
 #ind_data <- read.csv("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/stacks/info/popmap_cleaned_MacGuigan_no-brev_mapping.csv")
-ind_data <- read_table('~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ref-alignment-assembly/popmap-bcftools.tsv', col_names=FALSE)
+ind_data <- read_table('~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/info/distichus-popmap-master.tsv', col_names=T)
 ## population
 #pop <- ind_data$Subspecies
   ## locality
 #loc <- ind_data$REG_Localities
 ## repeat steps to clean sample IDs
-ind_data$X1 <- str_replace(ind_data$X1, "/scratch/tcm0036/distichus-ddRAD/alignments/results/bam/", "") %>% 
-          str_replace(".aligned.sorted.bam","")
-dropped <- !ind_data$X1%in%pca$Ind # these are the specimens dropped from variant filtering
+dropped <- !ind_data$Sample%in%pca$Ind
 ind_data[dropped,] 
 ind_data <- ind_data[!dropped,]
-pop <- ind_data$X2
+pop <- ind_data$Taxon
+loc <- ind_data$Locality
 
 # combine to plot in different colors ## may not be practical for as many as we have
-#pop_loc <- paste0(pop, "_", loc)
+pop_loc <- paste0(pop, "_", loc)
 
 # Remake `pca` dataframe
-pca <- as_tibble(data.frame(pca$Ind, pop, pca[,2:ncol(pca)]))#, loc, pop_loc))
+pca2 <- as_tibble(data.frame(pca$Ind, pop, loc, pop_loc, pca[,2:ncol(pca)]))
 
 ###########################################################################
 
@@ -102,9 +101,9 @@ pop_shps <- c("aurifer"=21, "suppar"=21, "vinosus"=21, "dom3"=21,
               "altavelensis"=21, "brevirostris"=22, "caudalis"=23, "marron"=24, "websteri"=25)
 
 # Plot first two principal components
-pc_plot <- ggplot(pca, aes(PC1, PC2, col=pop, )) + geom_point(size = 3) #+ geom_text(aes(label=pca.Ind))#, aes(shape = pop_shps)) 
+pc_plot <- ggplot(pca, aes(PC1, PC2, color=pop_loc)) + geom_point(size = 3) #+ geom_text(aes(label=pca.Ind))#, aes(shape = pop_shps)) 
 pc_plot <- pc_plot + coord_equal() + theme_light()
-pc_plot <- pc_plot + scale_color_manual(values = pop_cols) 
+#pc_plot <- pc_plot + scale_color_manual(values = pop_cols) 
 pc_plot
 
 pc_plot_23 <- ggplot(pca, aes(PC2, PC3, col=pop, )) + geom_point(size = 3)
