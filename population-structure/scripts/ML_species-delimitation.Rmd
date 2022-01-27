@@ -47,15 +47,28 @@ ind_data <- ind_data[ind_data$File_path %in% vcfR_samples,]
 
     gen@ind.names <- ind_data$Sample_ID_pop     # First, replace the individual names in the genlight object with those from the specimen information dataframe
 
-    grp <- find.clusters(gen, max.n.clust=30)   # This will prompt two questions to determine the number of PCs to retain and the number of clusters to keep based on BIC scores
+    #set.seed()
+    # This will prompt two questions to determine the number of PCs to retain (350) 
+    # and the value of K to keep based on BIC scores
+    grp <- find.clusters(gen, max.n.clust=30)  
     dapc1 <- dapc(gen, grp$grp, n.pca=150, n.da=5)
+    # save individual cluster assignment as file
+    write.table(dapc1$grp, "DAPC-group-assignments.txt", quote=F, sep="\t")
 
+    # plot clusters for first two LDs
     dapc.plot.df <- as.data.frame(dapc1$ind.coord)
+    ggplot(data=dapc.plot.df, aes(x=LD1, y=LD2, color=grp$grp))+
+    geom_point(cex=3)+
+    theme_classic()+
+    labs(x="Linear discriminant 1",y="Linear discriminant 2")
+    ggsave("LD1-LD2.pdf")
 
-    ggplot(data=dapc.plot.df, aes(x=LD, y=LD2, color=grp$grp))+
+    # plot clusters for next two LDs
+    ggplot(data=dapc.plot.df, aes(x=LD3, y=LD4, color=grp$grp))+
     geom_point(cex=3)+
     theme_classic()+
     labs(x="Linear discriminant 3",y="Linear discriminant 4")
+    ggsave("LD3-LD4.pdf")
 
 ################################################################
 ## Unsupervised Random Forest 
