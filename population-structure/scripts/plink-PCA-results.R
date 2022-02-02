@@ -16,8 +16,11 @@ library(tidyverse)
 ######################### Load data and clean #############################
 
 # Read in PCA results from plink
-pca <- read_table("population-structure/pca/ref-alignment/variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenvec", col_names = FALSE)
-eigenvals <- read_table("population-structure/pca/ref-alignment/variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenval", col_names = FALSE)
+#pca <- read_table("population-structure/pca/ref-alignment/variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenvec", col_names = FALSE)
+#eigenvals <- read_table("population-structure/pca/ref-alignment/variants_minQ20minDP10maxDPnanmac3geno95ind25_FIL-4.eigenval", col_names = FALSE)
+
+pca <- read_table("population-structure/pca/ref-alignment/linkage-pruned/distichus-only-LD-pruned.eigenvec", col_names = FALSE)
+
 ## The second column, which would normally contain locality information instead repeats individual identifiers, 
 ## except in the case of technical replicate samples. The parser did something odd there, recognizing the '_' between 
 ## sample ID and 'rep' as a break so the entries with the second column just read as the rest of the file path beginning with 'rep'
@@ -54,7 +57,8 @@ ind_data <- read_table('~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/info
 dropped <- !ind_data$Sample%in%pca$Ind
 ind_data[dropped,] 
 ind_data <- ind_data[!dropped,]
-pop <- ind_data$Taxon
+pop <- ind_data$PopID
+taxon <- ind_data$Taxon
 loc <- ind_data$Locality
 
 # combine to plot in different colors ## may not be practical for as many as we have
@@ -69,6 +73,7 @@ pca2 <- as_tibble(data.frame(pca$Ind, pop, loc, pop_loc, pca[,2:ncol(pca)]))
 
 # Convert to percentage variance explained "PVE"
 pve <- data.frame(PC=1:20, pve = eigenvals/sum(eigenvals)*100)
+names(pve)[2] <- "pve"
 
 # Create barplot to show the percentage of variance explained by each PC
 pve_plot <- ggplot(pve, aes(PC, pve)) + geom_bar(stat = "identity")
@@ -80,7 +85,14 @@ cumsum(pve$pve)
 # Now plot principal components in a scatter plot
 
 # Make vector with color values 
-pop_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalblue4", "dom3"="royalblue4", 
+pop_cols <- c("distichus"="palegreen1", "distichoides"="palegreen1", "dapsilis"="palegreen1", "biminiensis"="palegreen1", "ocior"="palegreen1",
+              "dom1"="tan4", "dom2"="sienna", "dom4"="orange4", 
+              "Cordillera_ignigularis"="darkorange3", "west_ignigularis"="orange", "east_ignigularis"="darkorange",
+              "properus"="grey68", "sejunctus"="grey68", "igprop"="darkkhaki", "ravig"="khaki1", "ravitergum"="gold1", "altavelensis"="gold1",
+              "orange_favillarum"="slateblue1", "white_favillarum"="slateblue4",
+              "aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalblue4", "dom3"="royalblue4")
+
+tax_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalblue4", "dom3"="royalblue4", 
               "dom12"="coral4", "dom2"="firebrick", 
               "ignigularis"="chocolate1", "igprop"="chocolate1", "ravig"="yellow1", 
               "properus"="grey68", "sejunctus"="grey68", 
@@ -90,23 +102,14 @@ pop_cols <- c("aurifer" = "royalblue4", "suppar"="royalblue4", "vinosus"="royalb
               "distichus"="palegreen1", "distichoides"="palegreen1", "dapsilis"="palegreen1", "biminiensis"="palegreen1", "ocior"="palegreen1",
               "altavelensis"="gray0", "brevirostris"="gray0", "caudalis"="gray0", "marron"="gray0", "websteri"="gray0")
 
-pop_shps <- c("aurifer"=21, "suppar"=21, "vinosus"=21, "dom3"=21, 
-              "dom12"=21, "dom2"=21, 
-              "ignigularis"=21, "igprop"=21, "ravig"=21, 
-              "properus"=21, "sejunctus"=21, 
-              "ravitergum"=21, 
-              "dom1"=21, "dom4"=21, 
-              "favillarum"=21, 
-              "distichus"=21, "distichoides"=21, "dapsilis"=21, "biminiensis"=21, "ocior"=21,
-              "altavelensis"=21, "brevirostris"=22, "caudalis"=23, "marron"=24, "websteri"=25)
 
 # Plot first two principal components
-pc_plot <- ggplot(pca, aes(PC1, PC2, color=pop_loc)) + geom_point(size = 3) #+ geom_text(aes(label=pca.Ind))#, aes(shape = pop_shps)) 
+pc_plot <- ggplot(pca2, aes(PC1, PC2, color=pop)) + geom_point(size = 3) #+ geom_text(aes(label=pca.Ind))#, aes(shape = pop_shps)) 
 pc_plot <- pc_plot + coord_equal() + theme_light()
-#pc_plot <- pc_plot + scale_color_manual(values = pop_cols) 
+pc_plot <- pc_plot + scale_color_manual(values = pop_cols) 
 pc_plot
 
-pc_plot_23 <- ggplot(pca, aes(PC2, PC3, col=pop, )) + geom_point(size = 3)
+pc_plot_23 <- ggplot(pca2, aes(PC2, PC3, col=pop, )) + geom_point(size = 3)
 pc_plot_23 <- pc_plot_23 + coord_equal() + theme_light()
 pc_plot_23 <- pc_plot_23 + scale_color_manual(values = pop_cols) 
 pc_plot_23

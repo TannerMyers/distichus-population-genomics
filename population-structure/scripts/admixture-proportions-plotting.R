@@ -48,3 +48,15 @@ make.admix.pie.plot(admix.proportions = admix.props,
                     add = TRUE, radii = 1)
 
 dev.off()
+
+setwd("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/admixture/R0.7-nobrevirostris-admixture-results/")
+
+# Create an object containing the different .Q extension files produced by Admixture for the below for loop to 
+# iterate over to generate barplots showing ancestry proportions
+files <- list.files(pattern = ".Q")
+
+# For each value of K, generate a bar plot to visualize ancestry proportions across individuals in dataset
+for (Q in files){
+  output <- basename(file.path(Q, fsep=".Q"))
+
+}

@@ -8,3 +8,9 @@ This file outlines workflow of ddRADseq loci assembly via alignment to a referen
 **Setting up the environment**
 
 I strongly recommend installing packages through a package manager (e.g., Anaconda, Miniconda, or Mamba) 
+
+## Assess mapping quality
+
+First,  download .gtf files from Ensembl database for *A*. *carolinensis*: [http://ftp.ensembl.org/pub/release-104/gtf/anolis_carolinensis/](http://ftp.ensembl.org/pub/release-104/gtf/anolis_carolinensis/). The .gff/.gtf file format are tab-delimited files containg genomic annotations.
+
+Then, run qualimap by 

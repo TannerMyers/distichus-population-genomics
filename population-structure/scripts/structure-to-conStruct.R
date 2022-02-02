@@ -1,6 +1,12 @@
 
+setwd("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/conStruct/")
+
 # Load STRUCTURE file as dataframe
-str <- read.table("../populations.distichusonly.R0.7.noBahamas.str", header = TRUE, check.names = FALSE)
+#str <- read.table("../populations.distichusonly.R0.7.noBahamas.str", header = TRUE, check.names = FALSE)
+str.8 <- read.table("populations.distichusonly.R0.7.filtered.str", 
+                  check.names = FALSE,
+                  header = TRUE)
+str <- read.table("populations.snps.noBahamas.filtered.0.85.recode.nohead.strct_in")
 # Eliminate row of column names
 #str <- str[-1,] 
 
@@ -9,12 +15,12 @@ str[str == "-9"] <- NA
 
 #str <- str[ order(str$Population, str$Individual)]
 
-SampleID <- as.character(unique(str$Individual))
+SampleID <- as.character(unique(str$Ind))
 
 # Loop over all loci, creating an allele frequency table (0,1,2)
 count <- data.frame(SampleID)
 for(loci in 3:dim(str)[2]){   
-  temp <- table(str$Individual, str[,loci])           
+  temp <- table(str$Ind, str[,loci])           
   colnames(temp) <- paste0(colnames(str)[loci], "-", colnames(temp)) 
   temp <- data.frame(unclass(temp)) 
   
@@ -55,8 +61,9 @@ for(m in 1:length(table.pops$pop.vec)){
 }
 
 #Export conStruct file and save in working directory
-write.table(admix.props, "populations.distichusonly.R0.7.noBahamas.processed.str",
+write.table(admix.props, "population-structure/conStruct/populations.distichusonly.R0.7.noBahamas.filtered.processed.str",
             quote=F,
             sep="\t",
             row.names=F,
             col.names=F)
+
