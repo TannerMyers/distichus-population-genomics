@@ -1,0 +1,121 @@
+
+
+```{r}
+
+# Prepare VCF for conStruct analysis
+
+setwd("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/")
+
+library(vcfR)
+library(tidyverse)
+
+ind_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-master.tsv", col_names = TRUE)
+
+vcfR <- read.vcfR("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/VAE/distichus-brevirostris-nomissing_pruned.vcf")
+    dim(vcfR@gt)
+
+## exclude missing sites
+vcfR@fix <- vcfR@fix[rowSums(is.na(vcfR@gt)) == 0, ]
+vcfR@gt <- vcfR@gt[rowSums(is.na(vcfR@gt)) == 0, ]
+    dim(vcfR)
+
+## output VCF to be filtered/pruned for conStruct analysis
+write.vcf(x = vcfR, file = "conStruct/distichus-spgrp-no-missing-LD-pruned.vcf.gz")
+
+vcf_samples <- colnames(vcfR@gt)   # isolate specimen identifiers from the VCF
+vcf_samples <- gsub("(_/).*", "\\1", vcf_samples) %>% str_replace("_/", "")
+## ^a bit hacky, but this gets rid of the duplicated path names serving
+## as individual IDs in the `vcfR` object, which is a byproduct of plink
+
+## exclude specimens dropped during filtering:
+## 266166-8 (altavelensis), 4403-4 (ravitergum), 6081 (dominicensis 4), 866 (ignigularis) # nolint
+ind_data <- ind_data[ind_data$File_path %in% vcf_samples, ] 
+    dim(ind_data)
+
+ind_data2 <- ind_data[ind_data$Island == "Hispaniola", ]
+
+write_delim(x = ind_data,
+    file = "/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv",  # nolint
+    delim = "\t",
+    col_names = TRUE)
+
+write_delim(x = ind_data2,
+    file = "/home/tcm0036/distichus-ddRAD/info/all-distichoids-Hispaniola-only-cleaned-popmap.tsv",
+    delim = "\t",
+    col_names = TRUE)
+```
+
+```{bash}
+cd conStruct/
+
+conda activate genomics_env
+
+# Rename samples in VCF
+awk '{print $2}' distichus-popmap-cleaned-master.tsv | tail -n276 > new-sample_names.txt  
+bcftools view distichus-spgrp-no-missing-LD-pruned.vcf.gz | bcftools reheader --samples new-sample_names.txt -o distichus-spgrp-no-missing-LD-pruned-informative-names.vcf
+
+# Drop samples not from Hispaniola
+awk '{print $2}' all-distichoids-Hispaniola-only-cleaned-popmap.tsv | tail -n251 > specimens-to-keep.txt 
+vcftools --vcf distichus-spgrp-no-missing-LD-pruned-informative-names.vcf --keep specimens-to-keep.txt --recode --out distichus-spgrp-Hispaniola-no-missing-LD-pruned
+
+# convert VCF to STRUCTURE format
+plink --vcf distichus-spgrp-Hispaniola-no-missing-LD-pruned.recode.vcf --double-id --allow-extra-chr --recode structure --out distichus-spgroup-conStruct
+
+# And get rid of two header lines to leave just sample information
+tail -n251 distichus-spgroup-conStruct.recode.strct_in > distichus-spgroup-noheader-conStruct.str
+```
+
+```{r}
+setwd("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/conStruct")
+
+library(tidyverse)
+library(fields)
+library(conStruct)
+library(doParallel)
+library(foreach)
+
+#########
+# Generate input files for conStruct 
+#########
+
+# (1) Load allele frequencies file
+    #structure2conStruct(infile = "distichus-spgroup-noheader-conStruct.str",
+    #    onerowperind = TRUE,
+    #    start.loci = 3,
+    #    missing.datum = 0, # This data matrix lacks any missing data so I just chose 0
+    #    outfile = "distichus-spgroup-conStuct-input")
+load("distichus-spgroup-conStuct-input.RData")
+
+# (2) Load coordinates for specimen sampling localities
+ind_data <- read_table("/home/tcm0036/distichus-ddRAD/info/all-distichoids-Hispaniola-only-cleaned-popmap.tsv", col_names = TRUE)
+latlong <- as.matrix(ind_data[,c('Longitude', 'Latitude')])
+
+# (3) Generate geographic distance matrix from specimen sampling localities
+
+## As per https://cran.r-project.org/web/packages/conStruct/vignettes/format-data.html#geographic-distance-matrix
+## I will be using the `fields::rdist.earth` function to estimate pairwise great-circle distances
+## between sampling coordinates
+geoDist <- fields::rdist.earth(x1 = latlong, x2 =latlong)
+
+#########
+# run conStuct analyses for Ks 1-10
+#########
+
+cl <- makeCluster(10, type = "FORK")
+registerDoParallel(cl)
+
+myRun <- x.validation(train.prop = 0.9, 
+    test.prop = 0.1,
+    n.reps = 8,
+    K = 1:10,
+    freqs = freqs,
+    coords = latlong,
+    geoDist = geoDist,
+    n.iter = 1e3,
+    make.figs = TRUE,
+    save.files = FALSE,
+    parallel = TRUE,
+    n.nodes = 10)
+
+stopCluster(cl)
+```
