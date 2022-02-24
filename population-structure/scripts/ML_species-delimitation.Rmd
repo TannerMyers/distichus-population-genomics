@@ -14,7 +14,6 @@ library(randomForest)
 library(PCDimension)
 library(tsne)
 library(vcfR)
-library(httpgd) # maybe not
 
 ## Load specimen data and VCF
 ind_data <- read_table("~/distichus-ddRAD/info/distichus-popmap-master.tsv", col_names=TRUE)
@@ -42,21 +41,41 @@ ind_data <- ind_data[ind_data$File_path %in% vcfR_samples,]
     data_scaled <- scaleGen(data, center=FALSE, scale=FALSE, NA.method=c("mean"), nf)
     data_scaled <- scaleGen(data, center=FALSE, scale=FALSE)
 
+    gen@ind.names <- ind_data$Sample_ID_pop     # First, replace the individual names in the genlight object with those from the specimen information dataframe
+    pop(gen) <- ind_data$PopID # Next add population identifiers
+
+################################################################
+## Perform Principal Component Analysis
+
+    # This performs PCA on the genlight object `gen` and requires manually choosing the number of principal components to retain
+    gen_pca <- glPca(gen) # I chose 6
+    gen_pca_scores <- as_tibble(as.data.frame(gen_pca$scores))
+    gen_pca_scores$pop <- pop(gen)
+
+    p <- ggplot(gen_pca_scores, aes(x=PC1, y=PC2, color = gen_pca_scores$pop)) 
+        p <- p + geom_point(size=2)
+        p <- p + stat_ellipse(level = 0.95, size = 1)
+        p <- p + geom_hline(yintercept = 0) 
+        p <- p + geom_vline(xintercept = 0) 
+        p <- p + theme_bw()
+
+    p
+
 ################################################################
 ## Perform DAPC (discriminant analysis of principal components)
 
-    gen@ind.names <- ind_data$Sample_ID_pop     # First, replace the individual names in the genlight object with those from the specimen information dataframe
-
-    #set.seed()
+    set.seed(15)
     # This will prompt two questions to determine the number of PCs to retain (350) 
     # and the value of K to keep based on BIC scores
     grp <- find.clusters(gen, max.n.clust=30)  
     dapc1 <- dapc(gen, grp$grp, n.pca=150, n.da=5)
     # save individual cluster assignment as file
-    write.table(dapc1$grp, "DAPC-group-assignments.txt", quote=F, sep="\t")
+    write.table(dapc1$grp, "DAPC-group-assignments.txt", quote=F, sep="\t", col.names=F)
 
     # plot clusters for first two LDs
     dapc.plot.df <- as.data.frame(dapc1$ind.coord)
+    write.table(dapc.plot.df, "dapc-K10-5LDs.txt", quote=F, sep="\t", col.names=TRUE) # need column header for sample name column
+    
     ggplot(data=dapc.plot.df, aes(x=LD1, y=LD2, color=grp$grp))+
     geom_point(cex=3)+
     theme_classic()+
