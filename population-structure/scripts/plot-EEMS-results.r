@@ -2,12 +2,19 @@ setwd('/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/eems/disti
 
 library(rEEMSplots)
 library(rgdal)
-library(rworldmap)
+library(rgeos)
+library(raster)
 library(reemsplots2)
 
-map_world <-getMap()
+DOM <- getData('GADM', country='DOM', level=0)
+HTI <- getData('GADM', country= 'HTI', level =0)
 
-map_hispaniola <- map_world[c(which(map_world@data$SOVEREIGNT == "Dominican Republic"), which(map_world@data$SOVEREIGNT == "Haiti")), ]
+row.names(DOM) <- paste("DOM", row.names(DOM), sep="_")
+row.names(HTI) <- paste("HTI", row.names(HTI), sep="_")
+
+countryinfo <- rbind(HTI, DOM, makeUniqueIDs = TRUE)
+border <- gSimplify(countryinfo, tol=0.01, topologyPreserve=TRUE)
+
 
 demeNumbers <- c(400,600,800,1200)              # Create vector to loop over
 
@@ -22,8 +29,8 @@ for(i in demeNumbers){
 
     rEEMSplots::eems.plots(mcmcpath = MCMCPATH, plotpath = PLOTPATH, 
             longlat = TRUE, out.png = FALSE, add.grid = TRUE, add.outline = TRUE,
-	        m.plot.xy = { plot(map_hispaniola, col = NA, add = TRUE)},
-	        q.plot.xy = { plot(map_hispaniola, col = NA, add = TRUE)})
+	        m.plot.xy = { plot(border, col = NA, add = TRUE)},
+	        q.plot.xy = { plot(border, col = NA, add = TRUE)})
 
 }
 

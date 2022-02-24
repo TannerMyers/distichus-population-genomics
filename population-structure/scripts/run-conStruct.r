@@ -33,20 +33,22 @@ geoDist <- fields::rdist.earth(x1 = latlong, x2 =latlong)
 # run conStuct analyses for Ks 1-10
 #########
 
-cl <- makeCluster(10, type = "FORK")
-registerDoParallel(cl)
+dir.create("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/conStruct/outputs")
+
+#cl <- makeCluster(10, type = "FORK")
+#registerDoParallel(cl)
 
 myRun <- x.validation(train.prop = 0.9, 
-    test.prop = 0.1,
-    n.reps = 8,
+    n.reps = 10,
     K = 1:10,
     freqs = freqs,
     coords = latlong,
     geoDist = geoDist,
-    n.iter = 1e3,
+    n.iter = 1e4,
     make.figs = TRUE,
-    save.files = FALSE,
+    save.files = TRUE,
     parallel = TRUE,
-    n.nodes = 10)
+    n.nodes = 10, 
+    prefix = "outputs/distichus-spgroup-CV")
 
-stopCluster(cl)
+#stopCluster(cl)
