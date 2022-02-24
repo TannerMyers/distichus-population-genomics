@@ -55,5 +55,4 @@ population-structure/conStruct/
 population-structure/pca/
 population-structure/populations.distichusonly.R0.7.noBahamas.str
 population-structure/populations.distichusonly.R0.7.str
-stacks/genome-alignment/
-stacks/popmap.tsv
+stacks/*
