@@ -36,10 +36,10 @@ sequencing/
 library_prep/
 writing/
 preliminary_sampling_spreadsheets/
+stacks/.Rhistory
 stacks/old/
 stacks/popmap.test_samples.tsv
-stacks/barcodes_complete_inventory.txt 
-stacks/.Rhistory 
+stacks/barcodes_complete_inventory.txt
 stacks/info/*
 stacks/scripts/rundenovomap_old.sh 
 r80-stats.txt
@@ -56,3 +56,5 @@ population-structure/pca/
 population-structure/populations.distichusonly.R0.7.noBahamas.str
 population-structure/populations.distichusonly.R0.7.str
 stacks/*
+Mello_2019_distichus_ddRAD_complete_sampling.xlsx
+spatial-variation/*
