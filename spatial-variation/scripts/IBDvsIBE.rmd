@@ -1,6 +1,11 @@
-##############################################################
-#
-##############################################################
+######################################################################################
+# This script includes code for estimating pairwise Fst in the 
+# R package `hierfstat`, as well as estimating geographic distance 
+# and environmental dissimilarity to quantify the contributions of
+# isolation-by-distance and isolation-by-environment to genetic differentiation
+# using multivariate statistical approaches.
+# Authors: Tanner C. Myers, Pietro L. H. de Mello, Paul M. Hime, and Richard E. Glor
+######################################################################################
 
 ```{r}
 rm(list = ls())
@@ -13,6 +18,7 @@ library(rgdal)
 library(RStoolbox)
 library(adegenet)
 library(vcfR)
+library(hierfstat)
 library(StAMPP)
 library(BEDASSLE)
 library(ecodist) # MRM function may be able to replace MMRR
@@ -21,7 +27,18 @@ library(vegan)
 library(tidyverse)
 
 # Load MMRR function available from https://datadryad.org/stash/dataset/doi:10.5061%2Fdryad.kt71r
-source("MMRR.R")
+source("~/distichus-ddRAD/scripts/MMRR.R")
+
+## function for imputing NAs in the raster from 
+## https://stackoverflow.com/questions/45641168/fill-in-gaps-e-g-not-single-cells-of-na-values-in-raster-using-a-neighborhood
+fill.na <- function(x) {
+  center = 0.5 + (width*width/2)
+  if(is.na(x)[center]) {
+    return(mean(x, na.rm = TRUE))
+  } else {
+    return(x[center])
+  }
+}
 ```
 
 ```{r}
@@ -29,61 +46,64 @@ source("MMRR.R")
 
 # ddRADseq individual information
 RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", col_names = TRUE)
-RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>% 
-    filter(!(Taxon %in% c("websteri", "marron", "caudalis", "altavelensis"))) %>% filter(Island %in% "Hispaniola")
+RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>%
+    filter(!(Taxon %in% c("websteri", "marron", "caudalis", "altavelensis"))) %>%
+    filter(Island %in% "Hispaniola")  %>%
+    filter(!grepl("_rep", Sample)) # Temporary, eventually I need to deal with the technical replicates in the dataset
 
 # ddRADseq sequence data
 vcfR <- read.vcfR("../../population-structure/distichus-spgrp-no-missing-LD-pruned-informative-names.vcf")
 
-# convert vcfR object to genind and genlight objects
-    data <- vcfR2genind(vcfR)
-    gen <- vcfR2genlight(vcfR)
-    ## correct genlight object
-    gen <- gen[i = c(gen@ind.names %in% RAD_data2$Sample_ID_pop)]
+# convert vcfR object to genind object
+    dat <- vcfR2genind(vcfR)
+    dat2 <- dat[indNames(dat) %in% RAD_data2$Sample_ID_pop]
+    pop(dat2) <- RAD_data2$Locality
 
-# Morphometric dataset from Myers et al. (2020)
-morph_data <- read_csv("", col_names = TRUE)
-    ## Subset by character
-    morph_data <- morph_data[, c()]
+# Morphometric dataset from Myers et al. (2020) available from:
+# https://doi.org/10.5061/dryad.qfttdz0dq
+morph_data <- read_csv("Myers_2020_distichus_morphdata.csv", col_names = TRUE)
+    ## Subset by traits
+    morph_data <- morph_data[, c("Latitude", "Longitude", "SVL")]
 ```
 
 ```{r}
 # Load environmental dataset
 
 ## Load shapefile
-DOM <- getData('GADM', country = 'DOM', level=0, path = paste0(working_dir, "/data/shape-files/"), download = F)
-HTI <- getData('GADM', country = 'HTI', level=0, path = paste0(working_dir, "/data/shape-files/"), download =F)
+DOM <- getData('GADM', country = 'DOM', level=0, path = paste0("~/distichus-spatial-variation/data/shape-files/"), download = F)
+HTI <- getData('GADM', country = 'HTI', level=0, path = paste0("~/distichus-spatial-variation/data/shape-files/"), download =F)
 row.names(DOM) <- paste("DOM", row.names(DOM), sep = "_")
 row.names(HTI) <- paste("HTI", row.names(HTI), sep = "_")
 Hispaniola <- rbind(HTI, DOM, makeUniqueIDs = TRUE)
 Hispaniola <- gSimplify(Hispaniola, tol = 0.01, topologyPreserve = TRUE)
 
 ## Load environmental variables
-chelsa_clim <- raster::stack(list.files(path = "data/chelsa_new/", pattern = ".asc", full.names = TRUE))
-modis_vi <- raster::stack(list.files(path = "data/MODIS_new/", pattern = ".asc", full.names = TRUE))
+chelsa_clim <- raster::stack(list.files(path = "~/distichus-spatial-variation/data/chelsa_new/", pattern = ".asc", full.names = TRUE))
+modis_vi <- raster::stack(list.files(path = "~/distichus-spatial-variation/data/MODIS_new/", pattern = ".asc", full.names = TRUE))
 ## Raster stacks have different extents
     ## Since the extent of modis_vi fits within chelsa_clim's extent, crop chelsa_clim
     chelsa_clim <- crop(chelsa_clim, modis_vi@extent)
     chelsa_clim@extent <- raster::alignExtent(chelsa_clim@extent, modis_vi)
 
 ## Now, load elevational data that has already been adjusted to the MODIS variable extent
-elev_srtm <- raster("data/elevation_new/SRTM_elevation_1km.asc")
+elev_srtm <- raster("~/distichus-spatial-variation/data/elevation_new/SRTM_elevation_1km.asc")
 
 ## Merge all environmental data layers into single raster stack
 env <- raster::stack(elev_srtm, chelsa_clim, modis_vi, full.names = TRUE)
    env <- raster::crop(env, extent(Hispaniola))
 
 ## Check individual variable distributions,
-for (i in 1:20){
-    pdf(paste0("temp_plots/", names(env[[i]]), "-histogram.pdf"))
-        # plot histograms for each raster
-        hist(env[[i]], col = "green")
-    dev.off()
-}
+# for (i in 1:20){
+#     pdf(paste0("temp_plots/", names(env[[i]]), "-histogram.pdf"))
+#         # plot histograms for each raster
+#         hist(env[[i]], col = "green")
+#     dev.off()
+# }
 ```
 
 ```{r}
 # Infer Euclidean distance matrix from sampling points
+## Subset unique locations
 coords <- distinct(RAD_data2[, c("Longitude", "Latitude")])
 coords <- as.matrix(coords)
 
@@ -97,30 +117,23 @@ geog_dist <- sp::spDists(x = coords, y = coords, longlat = TRUE)
 pca_env <- RStoolbox::rasterPCA(env, spca = TRUE)
     plot(pca_env$map)
     summary(pca_env$model)
-    knitr::kable(round(pca_env$model$loadings[,1:5], 5)) # top 5 loadings
-
-## function for imputing NAs in the raster from 
-## https://stackoverflow.com/questions/45641168/fill-in-gaps-e-g-not-single-cells-of-na-values-in-raster-using-a-neighborhood
-fill.na <- function(x) {
-  center = 0.5 + (width*width/2)
-  if(is.na(x)[center]) {
-    return(mean(x, na.rm = TRUE))
-  } else {
-    return(x[center])
-  }
-}
+    knitr::kable(round(pca_env$model$loadings[, 1:5], 5)) # top 5 loadings
 
 ## use function above to impute NA values in each principal component raster
+width <- 5
+
 for (i in 1:5){
-    pc <- terra::focal(pca_env$map[[i]], w = matrix(1,width,width), fun = fill.na, na.rm = FALSE, pad = TRUE)
-        assign(paste0("pc",i), pc)
+    pc <- terra::focal(pca_env$map[[i]], w = matrix(1, width, width), fun = fill.na, na.rm = FALSE, pad = TRUE)
+        assign(paste0("pc", i), pc)
 }
+
 pc1_5 <- stack(pc1, pc2, pc3, pc4, pc5)
     names(pc1_5) <- c("PC1", "PC2", "PC3", "PC4", "PC5")
 
 ## Extract values for first 5 principal components
 pc_vals <- terra::extract(pc1_5, coords)
-    env_df <- as_tibble(data.frame(cbind(coords, pc_vals)))
+    pc_df <- as_tibble(data.frame(cbind(coords, pc_vals)))
+    write_delim(x = env_df, file = "rasterPCs.csv", delim = ",", col_names = TRUE)
 
 ```
 
@@ -132,18 +145,63 @@ eco_dist <- as.matrix(dist(env_df[, c("PC1", "PC2", "PC3", "PC4", "PC5")]), meth
 
 ```{r}
 # Estimate pairwise Fst for genetic differentiation matrix
-## Use StAMPP package's function ``stamppFst" to estimate Fst among populations in genlight object
-gen_diff <- stamppFst(geno = gen, nboots = 1000, percent = 95, nclusters = 1)
-    save(gen_diff, file = "Fst-matrix.RData")
 
-gen_dist <- gen_diff$Fsts/(1 - gen_diff$Fsts)
-    gen_dist <- as.matrix(gen_dist)
+data <- genind2hierfstat(dat = dat2, pop = dat2@pop)
+data <- as.data.frame(cbind(dat2@pop, data[, c(2:ncol(data))]))
+
+gen_diff <- pairwise.WCfst(dat = data, diploid = TRUE)
+    save(gen_diff, file = "Fst-matrix.RData")
+    load("Fst-matrix.RData")
+    ## Changes NAs to 0s
+    gen_diff[is.na(gen_diff)] = 0
+
+gen_dist <- gen_diff/(1 - gen_diff)
+    class(gen_dist)
     isSymmetric(gen_dist) # Needs to be TRUE
+
+# ## Use StAMPP package's function ``stamppFst" to estimate Fst among populations in genlight object
+# gen_diff <- stamppFst(geno = gen, nboots = 1000, percent = 95, nclusters = 1)
+#     save(gen_diff, file = "Fst-matrix.RData")
 ```
 
 ```{r}
 # Run MMRR
+
+# (1) Quantify contributions of IBD (great circle distance) and IBE (Euclidean distances between 5 environmental PCs in aggregate)
 ## Define distance matrices to be used as dependent variables
-xvars <- c()
-MMRR(gen_diff, xvars, nperm = 1000)
+xvars <- list(ecology = eco_dist, geography = geog_dist)
+MMRR(gen_dist, xvars, nperm = 1000)
+
+# (2) Quantify contributions of IBD (great circle distance) and IBE (PCs disaggregated)
+xvars <- list(geography = geog_dist,
+            pc1 = as.matrix(dist(env_df$PC1, method = "euclidean")),
+            pc2 = as.matrix(dist(env_df$PC2, method = "euclidean")),
+            pc3 = as.matrix(dist(env_df$PC3, method = "euclidean")),
+            pc4 = as.matrix(dist(env_df$PC4, method = "euclidean")),
+            pc5 = as.matrix(dist(env_df$PC5, method = "euclidean")))
+MMRR(gen_dist, xvars, nperm = 1000)
+
+# (3) Only IBD
+xvars <- list(geography = geog_dist)
+MMRR(gen_dist, xvars, nperm = 1000)
+
+# (4) Only IBE
+xvars <- list(ecology = eco_dist)
+MMRR(gen_dist, xvars, nperm = 1000)
+
+# (5) Only IBE, with individuals PCs treated as distinct variables
+xvars <- list(pc1 = as.matrix(dist(env_df$PC1, method = "euclidean")),
+            pc2 = as.matrix(dist(env_df$PC2, method = "euclidean")),
+            pc3 = as.matrix(dist(env_df$PC3, method = "euclidean")),
+            pc4 = as.matrix(dist(env_df$PC4, method = "euclidean")),
+            pc5 = as.matrix(dist(env_df$PC5, method = "euclidean")))
+MMRR(gen_dist, xvars, nperm = 1000)
+```
+
+```{r}
+# Generalized dissimilarity modeling
+
+pop <- row.names(gen_dist)
+gen_gdm <- cbind(pop, gen_dist)
+
 ```

@@ -1,3 +1,6 @@
+##############################################################
+#
+##############################################################
 
 # Load R packages
 ```{r}
@@ -68,6 +71,15 @@ write_delim(x = ind_data2,
     pop(gen) <- ind_data$PopID # Next add population identifiers
 ```
 
+# Take cleaned VCF from vcfR and change sample names to be more informative
+```{bash}
+conda activate genomics_env
+
+# Rename samples in VCF
+awk '{print $2}' distichus-popmap-cleaned-master.tsv | tail -n276 > new-sample_names.txt  
+bcftools view distichus-spgrp-no-missing-LD-pruned.vcf.gz | bcftools reheader --samples new-sample_names.txt -o distichus-spgrp-no-missing-LD-pruned-informative-names.vcf
+```
+
 # Use PCA to visualize population structure
 ```{r}
 ################################################################
@@ -131,14 +143,20 @@ write_delim(x = ind_data2,
     ggsave("LD3-LD4.pdf")
 ```
 
+# Unsupervised Random Forest
+```{r} 
 
-# Take cleaned VCF from vcfR and change sample names to be more informative
-```{bash}
-conda activate genomics_env
+# convert genind scaled data to factors for Random Forest
+data_conv <- as.data.frame(data_scaled)
+data_conv[sapply(data_conv, is.integer)] <- lapply(data_conv[sapply(data_conv, is.integer)], as.factor)
+data_conv[sapply(data_conv, is.character)] <- lapply(data_conv[sapply(data_conv, is.character)], as.factor)
+nsamp <- nrow(data_conv)
 
-# Rename samples in VCF
-awk '{print $2}' distichus-popmap-cleaned-master.tsv | tail -n276 > new-sample_names.txt  
-bcftools view distichus-spgrp-no-missing-LD-pruned.vcf.gz | bcftools reheader --samples new-sample_names.txt -o distichus-spgrp-no-missing-LD-pruned-informative-names.vcf
+set.seed(16)
+rftest <- randomForest(data_conv, ntree = 5000)
+
+# Multi-dimensional scaling
+cmdsplot1 <- MDSplot(rf=rftest, fac=, k=10)
 ```
 
 # Use sNMF (sparse nonnegative matrix factorization) to identify the optimal value of K
