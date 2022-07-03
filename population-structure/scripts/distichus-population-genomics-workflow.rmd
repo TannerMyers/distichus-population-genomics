@@ -297,3 +297,18 @@ myRun <- x.validation(train.prop = 0.9,
 
 #stopCluster(cl)
 ```
+
+```{r}
+
+# ddRADseq individual information
+RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", col_names = TRUE)
+RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>%
+    filter(!(Taxon %in% c("websteri", "marron", "caudalis", "altavelensis"))) %>%
+    filter(Island %in% "Hispaniola")  %>%
+    filter(!grepl("_rep", Sample))
+
+RAD_data_north <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == -c(6,8],]
+RAD_data_south <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == 6],]
+RAD_data_brev <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == 8],]
+
+```

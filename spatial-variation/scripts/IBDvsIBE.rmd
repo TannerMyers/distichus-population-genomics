@@ -202,6 +202,17 @@ MMRR(gen_dist, xvars, nperm = 1000)
 # Generalized dissimilarity modeling
 
 pop <- row.names(gen_dist)
-gen_gdm <- cbind(pop, gen_dist)
+gen_gdm <- as.data.frame(cbind(pop, gen_dist))
 
+env_gdm <- as.data.frame(cbind(pop, coords, eco_dist))
+
+gdm_data <- formatsitepair(bioData = gen_gdm, bioFormat = 3,
+                        predData = env_gdm, siteColumn = "pop",
+                        XColumn = "Longitude", YColumn = "Latitude")
+
+# Run GDM with variable selection
+gdm.varImp(gdm_data, geo = TRUE, nPerm = 100)
+## Received following error:
+# Error in gdm.varImp(gdm_data, geo = TRUE, nPerm = 100) : 
+#   The spTable contains negative distance values. Must be between 0 - 1.
 ```
