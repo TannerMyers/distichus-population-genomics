@@ -300,6 +300,8 @@ myRun <- x.validation(train.prop = 0.9,
 
 ```{r}
 
+setwd("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/conStruct")
+
 # ddRADseq individual information
 RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", col_names = TRUE)
 RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>%
@@ -307,7 +309,8 @@ RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample !
     filter(Island %in% "Hispaniola")  %>%
     filter(!grepl("_rep", Sample))
 
-RAD_data_north <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == -c(6,8],]
+RAD_data_north <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster != 4 & snmfK9$cluster != 6 & snmfK9$cluster != 8],]
+    write_delim(as.data.frame(RAD_data_north$Sample_ID_pop), file = "specimens-north.txt", col_names = FALSE)
 RAD_data_south <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == 6],]
 RAD_data_brev <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == 8],]
 
