@@ -52,8 +52,8 @@ write_delim(x = ind_data2,
     col_names = TRUE)
 
     # filter out missing SNPs
-    vcfR@fix<-vcfR@fix[rowSums(is.na(vcfR@gt)) == 0,]
-    vcfR@gt<-vcfR@gt[rowSums(is.na(vcfR@gt)) == 0,]
+    vcfR@fix <- vcfR@fix[rowSums(is.na(vcfR@gt)) == 0, ]
+    vcfR@gt <- vcfR@gt[rowSums(is.na(vcfR@gt)) == 0, ]
         dim(vcfR) # note: the number of SNPs after running these commands was reduced from the VCF lacking missing data generated with vcftools
 
     ## output filtered VCF for other analyses
@@ -302,6 +302,9 @@ myRun <- x.validation(train.prop = 0.9,
 
 setwd("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/conStruct")
 
+# Load assignments from discrete population clustering analysis with sNMF
+snmfK9 <- read_table("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/lea/sNMF_K9_ancestry_coefficients_cluster.tsv")
+
 # ddRADseq individual information
 RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", col_names = TRUE)
 RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>%
@@ -315,5 +318,4 @@ RAD_data_south <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluste
     write_delim(as.data.frame(RAD_data_south$Sample_ID_pop), file = "specimens-south.txt", col_names = FALSE)
 RAD_data_brev <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster == 8],]
     write_delim(as.data.frame(RAD_data_brev$Sample_ID_pop), file = "specimens-brevirostris.txt", col_names = FALSE)
-
 ```

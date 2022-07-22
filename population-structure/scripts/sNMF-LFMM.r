@@ -20,79 +20,78 @@ library(lfmm)
 
 setwd("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/lea")
 
-# # Load specimen information
-# RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", 
-#                     col_names = TRUE)
+# Load specimen information
+RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv",
+                     col_names = TRUE)
 
-# RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>% 
-#     filter(!(Taxon %in% c("websteri", "marron", "caudalis", "altavelensis"))) %>% 
-#     filter(Island %in% "Hispaniola") %>%
-#     filter(!grepl("_rep", Sample)) # Temporary, eventually I need to deal with the technical replicates in the dataset
+RAD_data2 <- RAD_data %>% filter(Sample != "4481" & Sample != "10085" & Sample != "10086") %>% 
+    filter(!(Taxon %in% c("websteri", "marron", "caudalis", "altavelensis"))) %>% 
+    filter(Island %in% "Hispaniola") %>%
+    filter(!grepl("_rep", Sample)) # Temporary, eventually I need to deal with the technical replicates in the dataset
 
-# ################################################################
-# ## Infer ancestry proportions with sNMF
+################################################################
+## Infer ancestry proportions with sNMF
 
-# # vcf <- "../distichus-spgrp-no-missing-LD-pruned-informative-names.vcf"
-# # vcf2geno(vcf, output.file = "distichus-spgrp-no-missing-LD-pruned.geno")
-# geno <- read.geno("distichus-spgrp-no-missing-LD-pruned.geno")
-#     dim(geno)
+vcf <- "../distichus-spgrp-no-missing-LD-pruned-informative-names.vcf"
+vcf2geno(vcf, output.file = "distichus-spgrp-no-missing-LD-pruned.geno")
+geno <- read.geno("distichus-spgrp-no-missing-LD-pruned.geno")
+    dim(geno)
 
-# # obj.snmf <- snmf("distichus-spgrp-no-missing-LD-pruned.geno", K = 1:10, project = "new",
-# #     repetitions = 50, tolerance = 0.00001, seed = 16,
-# #     alpha = 100, entropy = TRUE, ploidy = 2)
-#     obj.snmf <- load.snmfProject("distichus-spgrp-no-missing-LD-pruned.snmfProject")
+obj.snmf <- snmf("distichus-spgrp-no-missing-LD-pruned.geno", K = 1:10, project = "new",
+     repetitions = 50, tolerance = 0.00001, seed = 16,
+     alpha = 100, entropy = TRUE, ploidy = 2)
+     obj.snmf <- load.snmfProject("distichus-spgrp-no-missing-LD-pruned.snmfProject")
 
-# pdf("snmf_K1-10_50-replicates.pdf")
-# plot(obj.snmf, cex = 1.2, col = "lightblue", pch = 19)
-# dev.off()
+pdf("snmf_K1-10_50-replicates.pdf")
+    plot(obj.snmf, cex = 1.2, col = "lightblue", pch = 19)
+dev.off()
 
-# for (i in 1:10){
-#     print(mean(cross.entropy(obj.snmf, K = i)))
-# }
+for (i in 1:10){
+     print(mean(cross.entropy(obj.snmf, K = i)))
+}
 
-# # For optimal value of K, plot ancestry coefficients
-# for (i in 9:10){
-#     k <- 10
-#     ce <- cross.entropy(obj.snmf, K = k) # K = 10 determined optimal
-#     best_run <- which.min(ce)
+# For optimal value of K, plot ancestry coefficients
+for (i in 9:10){
+    k = i
+    ce <- cross.entropy(obj.snmf, K = i) # K = 10 determined optimal
+    best_run <- which.min(ce)
 
-#     qmatrix <- LEA::Q(obj.snmf, run = best_run, K = k)
-#     Qmatrix  <- tess3r::as.qmatrix(qmatrix)
+    qmatrix <- LEA::Q(obj.snmf, run = best_run, K = k)
+    Qmatrix  <- tess3r::as.qmatrix(qmatrix)
 
-#     # get cluster assignments per individual
-#     cluster <- apply(qmatrix, 1, which.max)
+    # get cluster assignments per individual
+    cluster <- apply(qmatrix, 1, which.max)
 
-#     sNMF_ancestry_coefficients_cluster <- as.data.frame(cbind(RAD_data$Sample_ID_pop, cluster, Qmatrix))
-#     write_delim(x = sNMF_ancestry_coefficients_cluster,
-#                 file = paste0("sNMF_K", k, "_ancestry_coefficients_cluster.tsv"),
-#                 col_names = TRUE, delim = "\t")
+    sNMF_ancestry_coefficients_cluster <- as.data.frame(cbind(RAD_data$Sample_ID_pop, cluster, Qmatrix))
+        write_delim(x = sNMF_ancestry_coefficients_cluster,
+            file = paste0("sNMF_K", k, "_ancestry_coefficients_cluster-specimen-cleaned.tsv"),
+            col_names = TRUE, delim = "\t")
 
-#     snmf <- sNMF_ancestry_coefficients_cluster[order(as.numeric(sNMF_ancestry_coefficients_cluster$cluster)), ]
+    snmf <- sNMF_ancestry_coefficients_cluster[order(as.numeric(sNMF_ancestry_coefficients_cluster$cluster)), ]
 
-#     if (k == 10){
-#         pdf(paste0("sNMF-K", k, "-barplot.pdf"))
-#             barplot(t(snmf[,3:ncol(snmf)]),
-#                 col = c("black", "#c6b89c", "#1a1ac2", "gray80", "#634102",
-#                     "#993cc8", "black", "#04e779", "#cf5d34", "#fddc1f"),
-#                 names.arg = snmf$V1, las = 2, cex.names = 0.3, border = NA)
-#         dev.off()
-#     } else {
-#         pdf(paste0("sNMF-K", k, "-barplot.pdf"))
-#             barplot(t(snmf[,3:ncol(snmf)]),
-#                     col = c("gray80", "#634102", "#c6b89c", "#04e779",
-#                             "#fddc1f", "#993cc8", "#cf5d34", "black", "#1a1ac2"),
-#                     names.arg = snmf$V1, las = 2,
-#                     cex.names = 0.3, border = NA)
-#         dev.off()
+    if (k == 10){
+        pdf(paste0("sNMF-K", k, "-barplot-specimen-cleaned.pdf"))
+            barplot(t(snmf[,3:ncol(snmf)]),
+                col = c("black", "#c6b89c", "#1a1ac2", "gray80", "#634102",
+                        "#993cc8", "black", "#04e779", "#cf5d34", "#fddc1f"),
+                names.arg = snmf$V1, las = 2, cex.names = 0.3, border = NA)
+        dev.off()
+    } else {
+        pdf(paste0("sNMF-K", k, "-barplot-specimen-cleaned.pdf"))
+            barplot(t(snmf[,3:ncol(snmf)]),
+                col = c("gray80", "#634102", "#c6b89c", "#04e779",
+                        "#fddc1f", "#993cc8", "#cf5d34", "black", "#1a1ac2"),
+                names.arg = snmf$V1, las = 2, cex.names = 0.3, border = NA)
+        dev.off()
 
-#         # pdf(paste0("sNMF-K", k, "-spatial.pdf"))
-#         # plot(x = , RAD_data[,c('Longitude', 'Latitude')], 
-#         #     col.palette = c("gray80", "#634102", "#c6b89c", "#04e779",
-#         #                     "#fddc1f", "#993cc8", "#cf5d34", "black", "#1a1ac2"),
-#         #     interpolation.model = FieldsKrigModel(10))
-#         # dev.off()
-#     }
-# }
+        #pdf(paste0("sNMF-K", k, "-spatial.pdf"))
+        #    plot(x = , RAD_data[,c('Longitude', 'Latitude')], 
+        #        col.palette = c("gray80", "#634102", "#c6b89c", "#04e779",
+        #                     "#fddc1f", "#993cc8", "#cf5d34", "black", "#1a1ac2"),
+        #     interpolation.model = FieldsKrigModel(10))
+        # dev.off()
+    }
+}
 
 ################################################################
 # Now to look at environment-genotype associations with latent
