@@ -5,17 +5,11 @@ library(rgdal)
 library(rgeos)
 library(raster)
 
-DOM <- getData('GADM', country='DOM', level=0)
-HTI <- getData('GADM', country= 'HTI', level =0)
 
-row.names(DOM) <- paste("DOM", row.names(DOM), sep="_")
-row.names(HTI) <- paste("HTI", row.names(HTI), sep="_")
-
-countryinfo <- rbind(HTI, DOM, makeUniqueIDs = TRUE)
-border <- gSimplify(countryinfo, tol=0.01, topologyPreserve=TRUE)
+border <- readOGR("/home/tcm0036/distichus-spatial-variation/data/shape-files/Hispaniola.shp")
 
 # Create vector to loop over
-demeNumbers <- c(400, 600, 800, 1200)
+demeNumbers <- c(200, 400)
 
 for(i in demeNumbers){
 
