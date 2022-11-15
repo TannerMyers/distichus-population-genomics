@@ -112,7 +112,7 @@ for (i in 9:10){
 lfmm <- read.lfmm("distichus-spgrp-Hispaniola-only.lfmm")
 
 # Now, we need an `env` object that contains values for environmental variables for each locality
-# clim <- raster::stack(list.files(path = "~/distichus-spatial-variation/data/chelsa_new/", 
+# clim <- raster::stack(list.files(path = "~/distichus-spatial-variation/data/chelsa_new/",
 #                                 pattern = ".asc", full.names = TRUE))
 
 # fill.na <- function(x) {

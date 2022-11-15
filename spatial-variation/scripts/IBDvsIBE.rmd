@@ -428,8 +428,7 @@ p <- parameterEstimates(fit_all)
 # Subset datasets above for distichus subspecies only
 
 ## Exclude individual specimens that cluster with A. brevirostris
-RAD_data3 <- RAD_data2[RAD_data2$Sample_ID_pop %in% snmfK9$V1[snmfK9$cluster != 6 & snmfK9$cluster != 8], ]
-RAD_data3 <- RAD_data2[RAD_data2$cluster != 6 & RAD_data2$cluster != 6, ]
+RAD_data3 <- RAD_data2[RAD_data2$cluster != 6 & RAD_data2$cluster != 8, ]
 
 ## Subset genind object to reflect individuals retained in subsetted information file
     dat3 <- dat[indNames(dat) %in% RAD_data3$Sample_ID_pop]
@@ -580,13 +579,37 @@ model_all <- '
 '
 
 fit_all <-  sem(model_all, data = full, estimator = "MLR", se = "robust.huber.white")
-s <- summary(fit_all, standardized = TRUE, fit.measures = TRUE, rsquare = TRUE)
-p <- parameterEstimates(fit_all)
+s_all <- summary(fit_all, standardized = TRUE, fit.measures = TRUE, rsquare = TRUE)
+p_all <- parameterEstimates(fit_all)
+
+model_geo <- '
+    geo =~ geo.dist
+
+    gen.dist ~ geo
+
+    geo ~~ geo
+'
+fit_geo <- sem(model_geo, data = full, estimator = "MLR", se = "robust.huber.white")
+s_geo <- summary(fit_geo, standardized = TRUE, fit.measures = TRUE, rsquare = TRUE)
+p_geo <- parameterEstimates(fit_geo)
+
+model_env <- '
+    env =~ env.dist.1+env.dist.2+env.dist.3+env.dist.4+env.dist.5+env.dist.6+env.dist.7+env.dist.8+env.dist.9+env.dist.10+env.dist.11+env.dist.12+env.dist.13+env.dist.14+env.dist.15+env.dist.16+env.dist.17+env.dist.18+env.dist.19+env.dist.20
+
+    gen.dist ~ env
+    env ~~ env
+'
+
+fit_env <- sem(model_env, data = full, estimator = "MLR", se = "robust.huber.white")
+s_env <- summary(fit_env, standardized = TRUE, fit.measures = TRUE, rsquare = TRUE)
+p_env <- parameterEstimates(fit_env)
 ```
 
 ############################################################
 # RDA
 ```{r}
+
+load("dbMEM_distichus-subspecies.RData")
 
 rda.distichus.1 <- rda(dat3@tab ~., data = all_data2[, 22:ncol(all_data2)], scale = TRUE)
     RsquareAdj(rda.distichus.1)

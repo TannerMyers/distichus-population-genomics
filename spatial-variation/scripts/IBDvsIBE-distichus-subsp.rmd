@@ -7,6 +7,8 @@
 # Authors: Tanner C. Myers, Pietro L. H. de Mello, Paul M. Hime, and Richard E. Glor
 ######################################################################################
 
+######################################################################################
+# Load libraries and R functions
 ```{r}
 # Change below to reflect working directory
 # work_dir <- getwd()
@@ -26,7 +28,6 @@ library(raster)
 library(rgeos)
 library(rgdal)
 library(adespatial)
-library(envirem)
 library(RStoolbox)
 library(BEDASSLE)
 library(ecodist) # MRM function may be able to replace MMRR
@@ -46,7 +47,7 @@ source("~/distichus-ddRAD/scripts/quickMEM.R")
 ```
 
 
-############################################################
+######################################################################################
 # Load datasets
 ```{r}
 # Load genetic and morphological datasets and sampling info
@@ -71,6 +72,7 @@ vcfR <- read.vcfR("../population-structure/distichus-spgrp-no-missing-LD-pruned-
 dat <- vcfR2genind(vcfR)
 gen <- vcfR2genlight(vcfR)
 ```
+
 
 ```{r}
 # Subset datasets above for distichus subspecies only
