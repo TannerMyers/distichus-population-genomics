@@ -95,7 +95,7 @@ levels(all_data$cluster) <- c("ignigularis", "east dominicensis", "South paleo-i
 clust <- all_data$cluster
 bg <- c("#cf5d34", "#634102", "#993cc8", "gray80", "#c6b89c", "#fddc1f")
 
-pdf(paste0("rda/" str_replace(i, ".vcf", ""), "-full-plot-simple.pdf"))
+pdf(paste0("rda/", str_replace(i, ".vcf", ""), "-full-plot-simple.pdf"))
     plot(rda_distichus_1, type = "n", scaling = 3)
     #points(rda_distichus_1, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 2)) # SNPs in this case
     points(rda_distichus_1, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 2)) # lizards
