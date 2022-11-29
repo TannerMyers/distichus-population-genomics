@@ -1,13 +1,10 @@
-######################################################################################
-# This script includes code for estimating pairwise Fst in the 
-# R package `hierfstat`, as well as estimating geographic distance 
-# and environmental dissimilarity to quantify the contributions of
-# isolation-by-distance and isolation-by-environment to genetic differentiation
-# using multivariate statistical approaches.
-# Authors: Tanner C. Myers, Pietro L. H. de Mello, Paul M. Hime, and Richard E. Glor
-######################################################################################
+---
+title: "Isolation by distance vs. Isolation by Environment"
+author: "Tanner Myers"
+date: "11/29/2022"
+output: html_document
+---
 
-######################################################################################
 # Load libraries and R functions
 ```{r}
 # Change below to reflect working directory
@@ -46,8 +43,6 @@ source("~/distichus-ddRAD/scripts/MMRR.R")
 source("~/distichus-ddRAD/scripts/quickMEM.R")
 ```
 
-
-######################################################################################
 # Load datasets
 ```{r}
 # Load genetic and morphological datasets and sampling info
@@ -65,6 +60,9 @@ snmfK9 <- read_table("/scratch/tcm0036/distichus-ddRAD/analyses/population-struc
 
 RAD_data2 <- inner_join(snmfK9, RAD_data2)
 
+## Exclude individual specimens that cluster with A. brevirostris
+RAD_data2 <- RAD_data2[RAD_data2$cluster != 6 & RAD_data2$cluster != 8, ]
+
 # Load linkage-pruned VCF file with 0% missing data
 vcfR <- read.vcfR("../population-structure/distichus-spgrp-no-missing-LD-pruned-informative-names.vcf")
 
@@ -76,12 +74,6 @@ gen <- vcfR2genlight(vcfR)
 
 ```{r}
 # Subset datasets above for distichus subspecies only
-
-env_df <- read_csv("mmrr/raw-environmental-variables.csv", col_names = TRUE)
-
-## Exclude individual specimens that cluster with A. brevirostris
-RAD_data2 <- RAD_data2[RAD_data2$cluster != 6 & RAD_data2$cluster != 8, ]
-
 ## Subset genind & genlight object to reflect individuals retained in subsetted information file
     dat2 <- dat[indNames(dat) %in% RAD_data2$Sample_ID_pop]
     ## Set population to be sampling locality
@@ -101,7 +93,7 @@ morph_data <- read_csv("mmrr/Myers_2020_distichus_morphdata.csv", col_names = TR
 ```
 
 ```{r}
-# Re-estimate distance matrices
+# Estimate distance matrices
 
 ## Geographic distance
 coords <- distinct(RAD_data2[, c("Longitude", "Latitude")])
@@ -110,6 +102,9 @@ coords <- as.matrix(coords)
 geog_dist <- sp::spDists(x = coords, y = coords, longlat = TRUE)
 
 ## Environmental distance
+
+env_df <- read_csv("mmrr/raw-environmental-variables.csv", col_names = TRUE)
+
 env_df <- inner_join(as_tibble(coords), env_df)
 
 # Now, do the same thing, but for raw environmental variables
@@ -119,10 +114,14 @@ env_dist <- as.matrix(dist(env_df[, 3:ncol(env_df)]))
 # annual mean air temperature, temperature seasonality, annual precipitation amount, and precipitation seasonality
 env_sub_dist <- as.matrix(dist(env_df[, c("CHELSA_bio10_01", "CHELSA_bio10_04", "CHELSA_bio10_12", "CHELSA_bio10_15")]))
 
+## Morphological distance
+
+```
+
+```{r}
 ## Genetic distance
 
 # Estimate pairwise Fst for genetic differentiation matrix
-
 data <- genind2hierfstat(dat = dat2, pop = dat2@pop)
 data <- as.data.frame(cbind(dat2@pop, data[, c(2:ncol(data))]))
 
@@ -135,9 +134,6 @@ data <- as.data.frame(cbind(dat2@pop, data[, c(2:ncol(data))]))
 gen_dist <- gen_diff2/(1 - gen_diff2)
     class(gen_dist)
     isSymmetric(gen_dist) # Needs to be TRUE
-
-## Morphological distance
-
 ```
 
 ##############################################################
@@ -293,7 +289,7 @@ clust <- all_data$cluster
 bg <- c("#cf5d34", "#634102", "#993cc8", "gray80", "#c6b89c", "#fddc1f")
 
 #pdf("rda/rda-distichus-subsp-full-plot.pdf")
-pdf("rda/rda-distichus-subsp-full-plot-simple.pdf")
+pdf("rda/rda-distichus-chrom2-full-plot-simple.pdf")
     plot(rda_distichus_1, type = "n", scaling = 3)
     #points(rda_distichus_1, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 2)) # SNPs in this case
     points(rda_distichus_1, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 2)) # lizards
