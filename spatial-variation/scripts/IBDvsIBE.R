@@ -89,7 +89,8 @@ for (i in list.files("vcfs-by-chrom/", pattern = ".vcf")){
     # isSymmetric(gen_dist) # Needs to be TRUE
 
 rda_distichus_1 <- rda(dat2@tab ~., data = all_data[, 22:ncol(all_data)], scale = TRUE)
-    save(rda_distichus_1, paste0(str_replace(i, ".vcf", ""), "_rda_1.RData"))
+    save(rda_distichus_1, file = paste0("rda/", str_replace(i, ".vcf", ""), "_rda_1.RData"))
+rda_distichus_1r2 <- RsquareAdj(rda_distichus_1)
 
 levels(all_data$cluster) <- c("ignigularis", "east dominicensis", "South paleo-island", "properus", "west dominicensis", "ravitergum")
 clust <- all_data$cluster
@@ -124,17 +125,16 @@ dev.off()
 ######## Variance partitioning
 
 vp <- varpart(dat2@tab, good_env, dbmem.1$dbMEM_red_model)
-    save(vp, paste0(str_replace(i, ".vcf", ""), "_vp.RData"))
-png("rda/", str_replace(i, ".vcf", ""), "venn_partitions.png", width = 6, height = 6, units = "in", res = 600)
+png(paste0("rda/", str_replace(i, ".vcf", ""), "venn_partitions.png"), width = 6, height = 6, units = "in", res = 600)
     plot(vp, bg = c("red", "blue"), digits = 1, Xnames = c('Env', 'Space'))
 dev.off()
 
 ######## Constrained on Space
 rda_distichus_cond <- rda(dat2@tab, good_env, dbmem.1$dbMEM_red_model)
-   save(rda_distichus_cond, paste0(str_replace(i, ".vcf", ""), "_rda_cond.RData"))
+   save(rda_distichus_cond, file = paste0("rda/", str_replace(i, ".vcf", ""), "_rda_cond.RData"))
 
 full_model <- rda(dat2@tab ~ . + Condition(as.matrix(dbmem.1$dbMEM_red_model)), data = all_data[, 22:ncol(all_data)])
 
 ordi <- ordistep(null_model, scope = formula(full_model), direction = "forward")
-    save(paste0("rda/", str_replace(i, ".vcf", ""), "constrained-variable-selection.RData"))
+    save(ordi, file = paste0("rda/", str_replace(i, ".vcf", ""), "constrained-variable-selection.RData"))
 }
