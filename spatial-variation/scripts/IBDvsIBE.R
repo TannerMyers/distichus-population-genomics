@@ -133,6 +133,8 @@ dev.off()
 rda_distichus_cond <- rda(dat2@tab, good_env, dbmem.1$dbMEM_red_model)
    save(rda_distichus_cond, file = paste0("rda/", str_replace(i, ".vcf", ""), "_rda_cond.RData"))
 
+null_model <- rda(dat2@tab ~ Condition(as.matrix(dbmem.1$dbMEM_red_model)), data = all_data[, 22:ncol(all_data)])
+
 full_model <- rda(dat2@tab ~ . + Condition(as.matrix(dbmem.1$dbMEM_red_model)), data = all_data[, 22:ncol(all_data)])
 
 ordi <- ordistep(null_model, scope = formula(full_model), direction = "forward")
