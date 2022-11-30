@@ -380,8 +380,7 @@ gdm_eg <- gdm(gdm_tab, geo = TRUE)
 gdm_g <- gdm(gdm_tab_geog, geo = TRUE)
 
 # Run GDM with variable selection
-gdm_1_imp <- gdm.varImp(gdm_tab, geo = TRUE, nPerm = 100, cores = 12, parallel = TRUE, outFile = "gdm.1.imp")
-gdm_1_imp_full <- gdm.varImp(gdm_tab, geo = TRUE, nPerm = 999, cores = 12, parallel = TRUE, outFile = "gdm.1.full.imp")
+gdm_1_imp_full <- gdm.varImp(gdm_tab, geo = TRUE, nPerm = 999, cores = 12, parallel = TRUE, outFile = "gdm.1.full.imp") # fullModelOnly argument not available?
 gdm_1_imp_full_nogeo <- gdm.varImp(gdm_tab, geo = FALSE, nPerm = 999, cores = 12, parallel = TRUE, outFile = "gdm.1.nogeo.imp")
 
 pred_env2 <- subset(pred_env, select = -c(CHELSA_bio10_02, CHELSA_bio10_03, CHELSA_bio10_04, CHELSA_bio10_07))
