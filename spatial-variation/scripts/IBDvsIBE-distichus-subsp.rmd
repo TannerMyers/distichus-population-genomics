@@ -367,8 +367,10 @@ sitespecies <- data.frame(all_data$Longitude, all_data$Latitude, dat2@tab)
 sitespecies$site <- rownames(dat2@tab)
 pred_env <- good_env
 pred_env$site <- rownames(dat2@tab)
-pred_env <- data.frame(pred_env, all_data$Longitude, all_data$Latitude)
-    no_env <- pred_env[, c(7, 8, 9)]
+pred_env <- as_tibble(cbind(pred_env, all_data$Longitude, all_data$Latitude))
+    no_env <- pred_env %>% select('site':"all_data$Latitude")
+pred_env <- data.frame(pred_env)
+no_env <- data.frame(no_env)
 
 # Format data for GDM
 gdm_tab <- formatsitepair(sitespecies, bioFormat = 1, XColumn = "all_data.Longitude", YColumn = "all_data.Latitude", predData = pred_env, siteColumn = "site")

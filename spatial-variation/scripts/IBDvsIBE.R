@@ -68,8 +68,6 @@ vcf_dir <- "/scratch/tcm0036/distichus-ddRAD/analyses/environmental-association/
 ## (2) Perform generalized dissimilarity modeling analysis
 for (i in list.files(vcf_dir, pattern = ".vcf")){
 
-setwd(work_dir)
-
 # Load relevant vcf
 vcfR <- read.vcfR(paste0(vcf_dir, i))
 # convert vcfR object to genind object
@@ -149,14 +147,14 @@ good_env <- all_data[, variables]
 
 # Run GDM
 
-
-setwd("gdm")
 sitespecies <- data.frame(all_data$Longitude, all_data$Latitude, dat2@tab)
 sitespecies$site <- rownames(dat2@tab)
 pred_env <- good_env
 pred_env$site <- rownames(dat2@tab)
-pred_env <- data.frame(pred_env, all_data$Longitude, all_data$Latitude)
-    no_env <- pred_env[, c(7, 8, 9)]
+pred_env <- as_tibble(cbind(pred_env, all_data$Longitude, all_data$Latitude))
+    no_env <- pred_env %>% select('site':"all_data$Latitude")
+pred_env <- data.frame(pred_env)
+no_env <- data.frame(no_env)
 
 # Format data for GDM
 gdm_tab <- formatsitepair(sitespecies, bioFormat = 1, XColumn = "all_data.Longitude", YColumn = "all_data.Latitude", predData = pred_env, siteColumn = "site")
@@ -168,8 +166,8 @@ gdm_eg <- gdm(gdm_tab, geo = TRUE)
 gdm_g <- gdm(gdm_tab_geog, geo = TRUE)
 
 # Run GDM with variable selection
-gdm_1_imp_full <- gdm.varImp(gdm_tab, geo = TRUE, nPerm = 999, cores = 12, parallel = TRUE, outFile = paste0(str_replace(i, ".vcf", ""), "gdm.1.full.imp")) # fullModelOnly argument not available?
-gdm_1_imp_full_nogeo <- gdm.varImp(gdm_tab, geo = FALSE, nPerm = 999, cores = 12, parallel = TRUE, outFile = paste0(str_replace(i, ".vcf", ""), "gdm.1.nogeo.imp"))
+gdm_1_imp_full <- gdm.varImp(gdm_tab, geo = TRUE, nPerm = 999, cores = 12, parallel = TRUE, outFile = paste0(str_replace(i, ".vcf", ""), ".gdm.1.full.imp")) # fullModelOnly argument not available?
+gdm_1_imp_full_nogeo <- gdm.varImp(gdm_tab, geo = FALSE, nPerm = 999, cores = 12, parallel = TRUE, outFile = paste0(str_replace(i, ".vcf", ""), ".gdm.1.nogeo.imp"))
 
 pred_env2 <- subset(pred_env, select = -c(CHELSA_bio10_02, CHELSA_bio10_03, CHELSA_bio10_04, CHELSA_bio10_07))
 gdm_tab2 <- formatsitepair(sitespecies, bioFormat=1, XColumn = "all_data.Longitude", YColumn = "all_data.Latitude", predData = pred_env2, siteColumn = "site")
