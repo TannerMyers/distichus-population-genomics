@@ -2,17 +2,18 @@
 #SBATCH --job-name variant-calling
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=tcm0036@auburn.edu
-#SBATCH --time=30-00:00:00
+#SBATCH --time=3-24:00:00
 #SBATCH --cpus-per-task 8 
 #SBATCH --mem 80G
 #SBATCH --partition jro0014_amd
 
-genome=/home/tcm0036/distichus-ddRAD/genome/Anolis_carolinensis.AnoCar2.0.dna.toplevel.fa
+# Must be bgzipped if compressed
+genome=/home/tcm0036/distichus-ddRAD/genome/Anolis_distichus/AnoDis1.0.fasta
 popmap=/home/tcm0036/distichus-ddRAD/info/popmap-bcftools.tsv
-outputfile=/scratch/tcm0036/distichus-ddRAD/alignments/results/bcf/variants.bcf
+outputfile=/scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/bcf/variants.bcf
 tmp=mapped-files.tmp.list
 
-ls /scratch/tcm0036/distichus-ddRAD/alignments/results/bam/*sorted.bam > $tmp 
+ls /scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/bam/*sorted.bam > $tmp 
 
 module load bcftools
 
