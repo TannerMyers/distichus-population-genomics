@@ -2,6 +2,19 @@
 #
 ##############################################################
 
+# Update vcf object to be more user friendly
+```{bash}
+conda activate genomics_env
+
+# Drop specimens deemed problematic
+vcftools --vcf variants_no-miss_50KbLD_pruned.recode.vcf --keep /home/tcm0036/distichus-ddRAD/info/cleaned-distichus-specimens.txt --out variants_no-miss_50KbLD_cleaned --recode
+
+# Rename samples in VCF
+awk '{print $2}' distichus-popmap-cleaned-master.tsv | tail -n273 > new-sample_IDs.txt  
+bcftools view variants_no-miss_50KbLD_cleaned.recode.vcf | bcftools reheader --samples new-sample_IDs.txt -o variants_no-miss_50KbLD_cleaned_inform_IDs.vcf
+```
+
+
 # Load R packages
 ```{r}
 library(tidyverse)
@@ -24,12 +37,14 @@ library(tess3r)
 # Process vcf file
 ```{r}
 ## Load specimen data and VCF
-ind_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-master.tsv", col_names = TRUE)
+RAD_data <- read_table("~/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", col_names = TRUE)
+#ind_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-master.tsv", col_names = TRUE)
 
-vcfR <- read.vcfR("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/VAE/distichus-brevirostris-nomissing_pruned.vcf")
+vcfR <- read.vcfR("/scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/vcf/LD_pruned/geno100/variants_no-miss_50KbLD_cleaned_inform_IDs.vcf")
+# vcfR <- read.vcfR("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/VAE/distichus-brevirostris-nomissing_pruned.vcf")
     dim(vcfR@gt)
 
-##  Filter out animals excluded in vcfR object from population map 
+##  Filter out animals excluded in vcfR object from population map
 vcfR_samples <- colnames(vcfR@gt)
 vcfR_samples <- gsub("(_/).*", "\\1", vcfR_samples) %>% str_replace("_/", "")
 # a bit hacky, but this gets rid of the duplicated path names serving
@@ -69,15 +84,6 @@ write_delim(x = ind_data2,
 
     gen@ind.names <- ind_data$Sample_ID_pop     # First, replace the individual names in the genlight object with those from the specimen information dataframe
     pop(gen) <- ind_data$PopID # Next add population identifiers
-```
-
-# Take cleaned VCF from vcfR and change sample names to be more informative
-```{bash}
-conda activate genomics_env
-
-# Rename samples in VCF
-awk '{print $2}' distichus-popmap-cleaned-master.tsv | tail -n276 > new-sample_names.txt  
-bcftools view distichus-spgrp-no-missing-LD-pruned.vcf.gz | bcftools reheader --samples new-sample_names.txt -o distichus-spgrp-no-missing-LD-pruned-informative-names.vcf
 ```
 
 # Use PCA to visualize population structure
@@ -164,9 +170,10 @@ cmdsplot1 <- MDSplot(rf=rftest, fac=, k=10)
 ################################################################
 ## Infer ancestry proportions with sNMF
 
-setwd("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/lea")
+setwd("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/lea/AnoDist_aln")
 
-vcf <- "../distichus-spgrp-no-missing-LD-pruned-informative-names.vcf"
+vcf <- "/scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/vcf/LD_pruned/geno100/variants_no-miss_50KbLD_cleaned_inform_IDs.vcf"
+# vcf <- "../distichus-spgrp-no-missing-LD-pruned-informative-names.vcf"
 vcf2geno(vcf, output.file = "distichus-spgrp-no-missing-LD-pruned.geno")
 #geno <- read.geno("distichus-spgrp-no-missing-LD-pruned.geno")
 #   dim(geno)
@@ -186,6 +193,7 @@ for (i in 1:10){
 
 # For optimal value of K, plot ancestry coefficients
 ```{r}
+load.snmfProject("distichus-spgrp-no-missing-LD-pruned.snmfProject")
 
 k <- 10
 ce <- cross.entropy(obj.snmf, K = k) # K = 10 determined optimal
@@ -254,24 +262,34 @@ library(foreach)
 #########
 
 # (1) Load allele frequencies file
-    #structure2conStruct(infile = "distichus-spgroup-noheader-conStruct.str",
-    #    onerowperind = TRUE,
-    #    start.loci = 3,
-    # This data matrix lacks any missing data so I just chose 0
-    #    missing.datum = 0,
-    #    outfile = "distichus-spgroup-conStuct-input")
+structure2conStruct(infile="distichus-subsp/distichus-subsp.recode.strct_in",
+    start.samples=3,
+    start.loci=3,
+    missing.datum=0,
+    onerowperind=TRUE,
+    outfile="distichus-subsp/distichus-conStruct-input")
+
+structure2conStruct(infile="brevirostris/brevirostris.recode.strct_in", 
+    start.samples=3,
+    start.loci=3,
+    missing.datum=0,
+    onerowperind=TRUE,
+    outfile="brevirostris/brevirostris-conStruct-input")
 load("distichus-spgroup-conStuct-input.RData")
 
 # (2) Load coordinates for specimen sampling localities
-ind_data <- read_table("/home/tcm0036/distichus-ddRAD/info/all-distichoids-Hispaniola-only-cleaned-popmap.tsv", col_names = TRUE)
-latlong <- as.matrix(ind_data[,c('Longitude', 'Latitude')])
+dist_ss <- read_table("~/distichus-ddRAD/info/distichus-subsp-Hispaniola-popmap-cleaned.tsv")
+brevs <- read_table("~/distichus-ddRAD/info/brevirostris_popmap-cleaned.tsv")
+
+latlong_d <- as.matrix(dist_ss[, c("Longitude", "Latitude")])
+latlong_b <- as.matrix(brevs[, c('Longitude', 'Latitude')])
 
 # (3) Generate geographic distance matrix from specimen sampling localities
 
 ## As per https://cran.r-project.org/web/packages/conStruct/vignettes/format-data.html#geographic-distance-matrix
 ## I will be using the `fields::rdist.earth` function to estimate pairwise great-circle distances
 ## between sampling coordinates
-geoDist <- fields::rdist.earth(x1 = latlong, x2 = latlong)
+geoDist <- fields::rdist.earth(x1 = latlong, x2 = latlong) ## For distichus subspecies subset, this is not symmetric for some reason
 
 #########
 # run conStuct analyses for Ks 1-10
@@ -282,7 +300,7 @@ dir.create("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure
 #cl <- makeCluster(10, type = "FORK")
 #registerDoParallel(cl)
 
-myRun <- x.validation(train.prop = 0.9, 
+myRun <- x.validation(train.prop = 0.9,
     n.reps = 10,
     K = 1:10,
     freqs = freqs,
@@ -292,7 +310,7 @@ myRun <- x.validation(train.prop = 0.9,
     make.figs = TRUE,
     save.files = TRUE,
     parallel = TRUE,
-    n.nodes = 10, 
+    n.nodes = 10,
     prefix = "outputs2/distichus-spgroup-CV")
 
 #stopCluster(cl)

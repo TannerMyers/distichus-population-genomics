@@ -57,4 +57,5 @@ population-structure/populations.distichusonly.R0.7.noBahamas.str
 population-structure/populations.distichusonly.R0.7.str
 stacks/*
 Mello_2019_distichus_ddRAD_complete_sampling.xlsx
-spatial-variation/*
+*.png
+*.pdf
