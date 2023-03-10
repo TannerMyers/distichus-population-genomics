@@ -1,6 +1,6 @@
 # ***Anolis distichus*** ddRADseq Project
 
-## Assembly of ddRADseq Loci and Calling of Variants
+## Assembly of ddRADseq Loci and Calling of Variants -- Clustering Approach
 
 This file outlines the workflow of demultiplexing and cleaning fastq files, assembling cleaned
 and sorted fastq files into loci, and calling variants with the program Stacks. The data are ddRADseq data assembled for

@@ -59,3 +59,4 @@ stacks/*
 Mello_2019_distichus_ddRAD_complete_sampling.xlsx
 *.png
 *.pdf
+*/.Rhistory

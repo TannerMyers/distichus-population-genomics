@@ -38,7 +38,7 @@ library(tess3r)
 ```{r}
 ## Load specimen data and VCF
 RAD_data <- read_table("~/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", col_names = TRUE)
-#ind_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-master.tsv", col_names = TRUE)
+#RAD_data <- read_table("/home/tcm0036/distichus-ddRAD/info/distichus-popmap-master.tsv", col_names = TRUE)
 
 vcfR <- read.vcfR("/scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/vcf/LD_pruned/geno100/variants_no-miss_50KbLD_cleaned_inform_IDs.vcf")
 # vcfR <- read.vcfR("/mmfs1/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/VAE/distichus-brevirostris-nomissing_pruned.vcf")
@@ -52,16 +52,16 @@ vcfR_samples <- gsub("(_/).*", "\\1", vcfR_samples) %>% str_replace("_/", "")
 
 ## exclude specimens dropped during filtering:
 ## 266166-8 (altavelensis), 4403-4 (ravitergum), 6081 (dominicensis 4), 866 (ignigularis)
-ind_data <- ind_data[ind_data$File_path %in% vcfR_samples,]
-    dim(ind_data)
+RAD_data <- RAD_data[RAD_data$File_path %in% vcfR_samples,]
+    dim(RAD_data)
 
-ind_data2 <- ind_data[ind_data$Island == "Hispaniola", ]
+RAD_data2 <- RAD_data[RAD_data$Island == "Hispaniola", ]
 
-write_delim(x = ind_data,
+write_delim(x = RAD_data,
     file = "/home/tcm0036/distichus-ddRAD/info/distichus-popmap-cleaned-master.tsv", # UPDATE PATH
     col_names = TRUE)
 
-write_delim(x = ind_data2,
+write_delim(x = RAD_data2,
     file = "/home/tcm0036/distichus-ddRAD/info/all-distichoids-Hispaniola-only-cleaned-popmap.tsv", # UPDATE PATH
     delim = "\t",
     col_names = TRUE)
@@ -79,17 +79,43 @@ write_delim(x = ind_data2,
     gen <- vcfR2genlight(vcfR)
 
     # scale dataframe
-    data_scaled <- scaleGen(data, center=FALSE, scale=FALSE, NA.method=c("mean"), nf)
-    data_scaled <- scaleGen(data, center=FALSE, scale=FALSE)
+    data_scaled <- scaleGen(data, center = FALSE, scale = FALSE, NA.method = c("mean"), nf)
+    data_scaled <- scaleGen(data, center = FALSE, scale = FALSE)
 
-    gen@ind.names <- ind_data$Sample_ID_pop     # First, replace the individual names in the genlight object with those from the specimen information dataframe
-    pop(gen) <- ind_data$PopID # Next add population identifiers
+#    gen@ind.names <- RAD_data$Sample_ID_pop     # First, replace the individual names in the genlight object with those from the specimen information dataframe
+    pop(gen) <- RAD_data$PopID
+    pop(data) <- RAD_data$PopID # Next add population identifiers
 ```
 
 # Use PCA to visualize population structure
 ```{r}
 ################################################################
-## Perform Principal Component Analysis
+## Perform Principal Component Analysis with `dudi.pca`
+pca <- dudi.pca(data@tab, center = TRUE, scale = TRUE) # I selected four axes to retain
+# dudi.pca(df = data@tab, center = TRUE, scale = TRUE, scannf = FALSE, nf = 4) # reproduce this result non-interactively
+
+colors <- funky(13)
+png("All-Hispaniola-subsp-PC1-PC2.png")
+s.class(pca$li, pop(data), xax = 1, yax = 2, col = transp(colors, .6), axesell = FALSE,
+cstar = 0, cpoint = 3, grid = FALSE)
+dev.off()
+
+# Now do hierarchical
+n_pca <- dudi.pca(n_data@tab, center = TRUE, scale = TRUE) # I selected 5, but could've been 3
+
+s_pca <- dudi.pca(s_data@tab, center = TRUE, scale = TRUE) # I selected 3
+
+colors <- funky(9)
+png("north-island-only-PC1-PC2.png")
+s.class(n_pca$li, pop(n_data), xax = 1, yax = 2, col = transp(colors, .6), axesell = FALSE,
+cstar = 0, cpoint = 3, grid = FALSE)
+dev.off()
+
+colors <- funky(5)
+png("south-island-only-PC1-PC2.png")
+s.class(s_pca$li, pop(s_data), xax = 1, yax = 2, col = transp(colors, .6), axesell = FALSE,
+cstar = 0, cpoint = 3, grid = FALSE)
+dev.off()
 
     # This performs PCA on the genlight object `gen` and requires manually choosing the number of principal components to retain
     gen_pca <- glPca(gen) # I chose 6
@@ -129,8 +155,8 @@ write_delim(x = ind_data2,
     grp <- find.clusters(gen, max.n.clust = 20, n.pca = 300, choose.n.clust = FALSE, criterion = "diffNgroup", stat = "BIC")
     dapc.xval <- xvalDapc(data_scaled, grp$grp, training.set = 0.9)
     xval.plot.df <- as.data.frame(dapc.xval$DAPC$ind.coord)
-    #rownames(xval.plot.df) <- ind_data$Sample_ID_pop
-    write_delim(x = cbind(ind_data$Sample_ID_pop, xval.plot.df),
+    #rownames(xval.plot.df) <- RAD_data$Sample_ID_pop
+    write_delim(x = cbind(RAD_data$Sample_ID_pop, xval.plot.df),
                     file = "xval_DAPC_K8.tsv",
                     delim = "\t", col_names = TRUE)
     
@@ -205,7 +231,7 @@ Qmatrix  <- tess3r::as.qmatrix(qmatrix)
 # get cluster assignments per individual
 cluster <- apply(qmatrix, 1, which.max)
 
-sNMF_ancestry_coefficients_cluster <- as.data.frame(cbind(ind_data$Sample_ID_pop, cluster, Qmatrix))
+sNMF_ancestry_coefficients_cluster <- as.data.frame(cbind(RAD_data$Sample_ID_pop, cluster, Qmatrix))
 write_delim(x = sNMF_ancestry_coefficients_cluster, file = "sNMF_K10_ancestry_coefficients_cluster.tsv",
             col_names = TRUE, delim = "\t")
 

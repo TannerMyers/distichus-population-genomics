@@ -51,7 +51,7 @@ for (i in 1:10){
 }
 
 # For optimal value of K, plot ancestry coefficients
-for (i in 9:10){
+for (i in 7:10){
     k = i
     ce <- cross.entropy(obj.snmf, K = i) # K = 10 determined optimal
     best_run <- which.min(ce)
@@ -62,12 +62,11 @@ for (i in 9:10){
     # get cluster assignments per individual
     cluster <- apply(qmatrix, 1, which.max)
 
-    sNMF_ancestry_coefficients_cluster <- as.data.frame(cbind(RAD_data$Sample_ID_pop, cluster, Qmatrix))
-        write_delim(x = sNMF_ancestry_coefficients_cluster,
-            file = paste0("sNMF_K", k, "_ancestry_coefficients_cluster-specimen-cleaned.tsv"),
+    snmf <- as.data.frame(cbind(RAD_data$Sample_ID_pop, cluster, qmatrix))
+    snmf <- snmf[order(as.numeric(snmf$cluster)), ]
+        write_delim(x = snmf,
+            file = paste0("sNMF_K", k, "_ancestry_coef.tsv"),
             col_names = TRUE, delim = "\t")
-
-    snmf <- sNMF_ancestry_coefficients_cluster[order(as.numeric(sNMF_ancestry_coefficients_cluster$cluster)), ]
 
     if (k == 10){
         pdf(paste0("sNMF-K", k, "-barplot-specimen-cleaned.pdf"))

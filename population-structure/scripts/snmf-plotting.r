@@ -118,25 +118,51 @@ for (i in 5:10){
         dev.off()
 }
 
-snmf.k.5 <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/lea/sNMF/distichus-subsp/sNMF_K5_ancestry_coefficients_cluster-specimen-cleaned.tsv", 
+k.5 <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/lea/sNMF/distichus-subsp/sNMF_K5_ancestry_coefficients_cluster-specimen-cleaned.tsv", 
                     col_names = T)
-clusters <- grep("V", names(snmf.k.5))
-avg_admix <- aggregate(snmf.k.5[, clusters], by = snmf.k.5[, c("Locality", "Longitude", "Latitude")], mean)
+clusters <- grep("V", names(k.5))
+avg_admix <- aggregate(k.5[, clusters], by = k.5[, c("Locality", "Longitude", "Latitude")], mean)
     avg_admix <- avg_admix[order(as.character(avg_admix$Locality)), ]
 
-cols_5 <- c("#634102", "#1b0e6e", "#cf5d34", "#fddc1f", "gray80")
+cols_5 <- c("orangered", "tan", "brown", "gray80", "gold")
 
-pdf("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/lea/sNMF/distichus-subsp/snmf-K5-pie-map.pdf",
-    width = 8, height = 5)
+pdf("k.5.barplot.pdf", width = 18, height = 10)
+barplot(t(k.5[,3:7]), col = cols_5, names.arg = k.5$V1,
+        las = 2, cex.names = 0.3, border = NA)
+dev.off()
+
+pdf("non-hierarchical-k.5.barplot.pdf", width = 20, height = 10) # Change name depending
+barplot(t(snmf[,3:7]), col = cols_5, names.arg = snmf$Specimen,
+        las = 2, cex.names = 0.3, border = NA)
+dev.off()
+
+
+#pdf("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/AnoDist/geno100/lea/distichus/hierarchical-snmf-K5-pie-map.pdf",
+pdf("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/population-structure/AnoDist/geno100/lea/distichus/non-hierarchical-snmf-K5-pie-map.pdf",
+    width = 14, height = 8)
     par(mar=c(1,1,1,1))
     raster::image(x,y,z=as.matrix(z), col=cols, breaks=zbreaks, useRaster=T,xlab="", ylab="",axes=F)
     plot(border, add=T, lwd=0.2, border="black")
     box(lwd=1.5)
     scalebar(type = "bar", divs = 2, d = 200, below = "km", xy=NULL)
     addnortharrow(scale = 0.35, pos = "topright")
+        # North paleo-island
         for (i in 1:length(unique(avg_admix$Locality))){
             mapplots::add.pie(z = as.numeric(avg_admix[i, 4:ncol(avg_admix)]),
                             x = avg_admix[i, 2], y = avg_admix[i, 3],
+                            #labels = "", col = cols_5, radius = 0.05)
                             labels = "", col = cols_5, radius = 0.05)
         }
 dev.off()
+
+# pdf("snmf-k5-north-ordered.pdf", width = 16, height = 10)
+# barplot(t(test[, 3:ncol(test)]), col = c("orangered", "tan", "brown", "gray80", "gold"), names.arg = test$Specimen, las = 2, cex.names = 0.3, border = NA)
+# dev.off()
+
+        # South paleo-island    
+            for (i in 1:length(unique(s.avg_admix$Locality))){
+                mapplots::add.pie(z = as.numeric(s.avg_admix[i, 4:ncol(s.avg_admix)]),
+                                x = s.avg_admix[i, 2], y = s.avg_admix[i, 3],
+                                labels = "", col = c("blueviolet", "dodgerblue4"), radius = 0.045)
+            }
+#dev.off()
