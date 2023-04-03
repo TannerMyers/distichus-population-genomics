@@ -342,6 +342,75 @@ myRun <- x.validation(train.prop = 0.9,
 #stopCluster(cl)
 ```
 
+# Compare conStruct model runs
+```{r}
+## After the conStruct x.validation run completed, to evaluate results I modified code from one of the package vigettes
+## (https://cran.r-project.org/web/packages/conStruct/vignettes/model-comparison.html#visualizing-results) to identify
+## whether non-spatial or spatial models were better supported and the optimal value of K.
+## Note: if you run `x.validation' without saving files, four files will be produced:
+    ## an Robject and 2 text files labelled "xval.results" and a data partition file ".xval.data.partions.Robj"
+
+## North paleo-island
+load('north/north-subsp-.xval.results.Robj')
+sp_results <- as.matrix(read_table('north/north-subsp-_sp_xval_results.txt'))
+sp_CIs <- apply(sp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
+
+
+nsp_results <- as.matrix(read_table('north/north-subsp-_nsp_xval_results.txt'))
+nsp_CIs <- apply(nsp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
+
+pdf("north/North-paleo-island-cross-val-results.pdf")
+    par(mfrow = c(1, 2))
+    plot(rowMeans(sp_results),
+        pch = 19, col = "blue",
+        ylab="predictive accuracy", xlab = "values of K",
+        ylim=range(sp_results, nsp_results),
+        main="cross-validation results")
+        points(rowMeans(nsp_results), col = "green", pch = 19)
+    plot(rowMeans(sp_results),
+        pch = 19, col = "blue",
+        ylab = "predictive accuracy", xlab = "values of K",
+        ylim = range(sp_CIs),
+        main = "spatial cross-validation results")
+    segments(x0 = 1:nrow(sp_results),
+            y0 = sp_CIs[1, ],
+            x1 = 1:nrow(sp_results),
+            y1 = sp_CIs[2, ],
+            col = "blue", lwd = 2)
+dev.off()
+
+## South paleo-island
+load('south/south-subsp-.xval.results.Robj')
+
+sp_results <- as.matrix(read_table('south/south-subsp-_sp_xval_results.txt'))
+sp_CIs <- apply(sp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
+
+
+nsp_results <- as.matrix(read_table('south/south-subsp-_nsp_xval_results.txt'))
+nsp_CIs <- apply(nsp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
+
+pdf("south/South-paleo-island-cross-val-results.pdf")
+    par(mfrow = c(1, 2))
+    plot(rowMeans(sp_results),
+        pch = 19, col = "blue",
+        ylab="predictive accuracy", xlab = "values of K",
+        ylim=range(sp_results, nsp_results),
+        main="cross-validation results")
+        points(rowMeans(nsp_results), col = "green", pch = 19)
+    plot(rowMeans(sp_results),
+        pch = 19, col = "blue",
+        ylab = "predictive accuracy", xlab = "values of K",
+        ylim = range(sp_CIs),
+        main = "spatial cross-validation results")
+    segments(x0 = 1:nrow(sp_results),
+            y0 = sp_CIs[1, ],
+            x1 = 1:nrow(sp_results),
+            y1 = sp_CIs[2, ],
+            col = "blue", lwd = 2)
+dev.off()
+
+```
+
 ```{r}
 
 setwd("/scratch/tcm0036/distichus-ddRAD/analyses/population-structure/conStruct")

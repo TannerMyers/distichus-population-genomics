@@ -49,60 +49,60 @@ dev.off()
 RAD_data_north <- read_table("~/distichus-ddRAD/info/distichus-north-island-popmap-master.tsv")
 RAD_data_south <- read_table("~/distichus-ddRAD/info/distichus-south-island-popmap-master.tsv")
 
-n.vcf <- read.vcfR("north-island/north-distichus-ssp2.recode.vcf")
-    colnames(n.vcf@gt)[2:176] <- RAD_data_north$Sample_ID_pop
-s.vcf <- read.vcfR("south-island/south-distichus-ssp2.recode.vcf")
-    colnames(s.vcf@gt)[2:31] <- RAD_data_south$Sample_ID_pop
+n_vcf <- read.vcfR("north-island/north-distichus-ssp2.recode.vcf")
+    colnames(n_vcf@gt)[2:176] <- RAD_data_north$Sample_ID_pop
+s_vcf <- read.vcfR("south-island/south-distichus-ssp2.recode.vcf")
+    colnames(s_vcf@gt)[2:31] <- RAD_data_south$Sample_ID_pop
 
-n.coords <- distinct(RAD_data_north[, c("Locality", "Longitude", "Latitude")])
-s.coords <- distinct(RAD_data_south[, c("Locality", "Longitude", "Latitude")])
+n_coords <- distinct(RAD_data_north[, c("Locality", "Longitude", "Latitude")])
+s_coords <- distinct(RAD_data_south[, c("Locality", "Longitude", "Latitude")])
 
-n.data <- vcfR2genind(n.vcf)
-s.data <- vcfR2genind(s.vcf)
+n_data <- vcfR2genind(n_vcf)
+s_data <- vcfR2genind(s_vcf)
 
-pop(n.data) <- RAD_data_north$Locality
-pop(s.data) <- RAD_data_south$Locality
+pop(n_data) <- RAD_data_north$Locality
+pop(s_data) <- RAD_data_south$Locality
 
-n.pop <- genind2genpop(n.data)
-s.pop <- genind2genpop(s.data)
+n_pop <- genind2genpop(n_data)
+s_pop <- genind2genpop(s_data)
 
-n.Dgen<- dist.genpop(n.pop, method = 1)
-s.Dgen <- dist.genpop(s.pop, method = 1) # Nei's D
+n_Dgen<- dist.genpop(n_pop, method = 1)
+s_Dgen <- dist.genpop(s_pop, method = 1) # Nei's D
 
-n.Dgeo <- distm(n.coords[,2:3])
-n.Dgeo <- as.dist(n.Dgeo)
+n_Dgeo <- distm(n_coords[, 2:3])
+n_Dgeo <- as.dist(n_Dgeo)
 
-s.Dgeo <- distm(s.coords[,2:3])
-s.Dgeo <- as.dist(s.Dgeo)
+s_Dgeo <- distm(s_coords[, 2:3])
+s_Dgeo <- as.dist(s_Dgeo)
 
 # north
-n.ibd <- mantel.randtest(n.Dgen, n.Dgeo)
+n_ibd <- mantel.randtest(n_Dgen, n_Dgeo)
 pdf("north-island/north_ibd.pdf")
-    plot(n.ibd)
+    plot(n_ibd)
 dev.off()
 
 # south
-s.ibd <- mantel.randtest(s.Dgen, s.Dgeo)
+s_ibd <- mantel.randtest(s_Dgen, s_Dgeo)
 pdf("south-island/south_ibd.pdf")
-    plot(s.ibd)
+    plot(s_ibd)
 dev.off()
 
 # north
 pdf("north-island/IBD-north-distichus-subsp.pdf")
-    dens <- kde2d(n.Dgeo, n.Dgen, n = 300)
+    dens <- kde2d(n_Dgeo, n_Dgen, n = 300)
     myPal <- colorRampPalette(c("white", "blue", "gold", "orange", "red"))
-    plot(n.Dgeo, n.Dgen, pch = 20, cex = 0.5)
+    plot(n_Dgeo, n_Dgen, pch = 20, cex = 0.5)
     image(dens, col = transp(myPal(300), 0.7), add = TRUE)
-    abline(lm(n.Dgen ~ n.Dgeo))
+    abline(lm(n_Dgen ~ n_Dgeo))
     #title("Isolation by distance plot")
-dev.off() 
+dev.off()
 
 # south
 pdf("south-island/IBD-south-distichus-subsp.pdf")
-    dens <- kde2d(s.Dgeo, s.Dgen, n = 300)
+    dens <- kde2d(s_Dgeo, s_Dgen, n = 300)
     myPal <- colorRampPalette(c("white", "blue", "gold", "orange", "red"))
-    plot(s.Dgeo, s.Dgen, pch = 20, cex = 0.5)
+    plot(s_Dgeo, s_Dgen, pch = 20, cex = 0.5)
     image(dens, col = transp(myPal(300), 0.7), add = TRUE)
-    abline(lm(s.Dgen ~ s.Dgeo))
+    abline(lm(s_Dgen ~ s_Dgeo))
     #title("Isolation by distance plot")
 dev.off()
