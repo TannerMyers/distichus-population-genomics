@@ -1,6 +1,7 @@
-##############################################################
-#
-##############################################################
+---
+title: Population Structure
+output: html_document
+---
 
 # Update vcf object to be more user friendly
 ```{bash}
@@ -351,21 +352,20 @@ myRun <- x.validation(train.prop = 0.9,
     ## an Robject and 2 text files labelled "xval.results" and a data partition file ".xval.data.partions.Robj"
 
 ## North paleo-island
-load('north/north-subsp-.xval.results.Robj')
-sp_results <- as.matrix(read_table('north/north-subsp-_sp_xval_results.txt'))
+load('north/north-subsp.xval.results.Robj')
+sp_results <- as.matrix(read_table('north/north-subsp_sp_xval_results.txt'))
 sp_CIs <- apply(sp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
 
-
-nsp_results <- as.matrix(read_table('north/north-subsp-_nsp_xval_results.txt'))
+nsp_results <- as.matrix(read_table('north/north-subsp_nsp_xval_results.txt'))
 nsp_CIs <- apply(nsp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
 
 pdf("north/North-paleo-island-cross-val-results.pdf")
-    par(mfrow = c(1, 2))
+    par(mfrow = c(2, 1))
     plot(rowMeans(sp_results),
         pch = 19, col = "blue",
         ylab="predictive accuracy", xlab = "values of K",
         ylim=range(sp_results, nsp_results),
-        main="cross-validation results")
+        main="cross-validation results (North paleo)")
         points(rowMeans(nsp_results), col = "green", pch = 19)
     plot(rowMeans(sp_results),
         pch = 19, col = "blue",
@@ -380,13 +380,13 @@ pdf("north/North-paleo-island-cross-val-results.pdf")
 dev.off()
 
 ## South paleo-island
-load('south/south-subsp-.xval.results.Robj')
+load('south/south-subsp.xval.results.Robj')
 
-sp_results <- as.matrix(read_table('south/south-subsp-_sp_xval_results.txt'))
+sp_results <- as.matrix(read_table('south/south-subsp_sp_xval_results.txt'))
 sp_CIs <- apply(sp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
 
 
-nsp_results <- as.matrix(read_table('south/south-subsp-_nsp_xval_results.txt'))
+nsp_results <- as.matrix(read_table('south/south-subsp_nsp_xval_results.txt'))
 nsp_CIs <- apply(nsp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
 
 pdf("south/South-paleo-island-cross-val-results.pdf")
@@ -395,7 +395,7 @@ pdf("south/South-paleo-island-cross-val-results.pdf")
         pch = 19, col = "blue",
         ylab="predictive accuracy", xlab = "values of K",
         ylim=range(sp_results, nsp_results),
-        main="cross-validation results")
+        main="cross-validation results (South paleo)")
         points(rowMeans(nsp_results), col = "green", pch = 19)
     plot(rowMeans(sp_results),
         pch = 19, col = "blue",
@@ -408,6 +408,90 @@ pdf("south/South-paleo-island-cross-val-results.pdf")
             y1 = sp_CIs[2, ],
             col = "blue", lwd = 2)
 dev.off()
+
+```
+
+# Estimate 'layer contributions' in conStruct
+```{r}
+#n_lay_cont <- matrix(NA, nrow = 5, ncol =5)
+
+for(j in 1:8){
+    n_lay_cont <- matrix(NA, nrow = 5, ncol =5)
+
+    load(paste0("north-subsp_sp_rep", j, "K1", "_conStruct.results.Robj"))
+    load(paste0("north-subsp_sp_rep", j, "K1", "_data.block.Robj"))
+
+    # calculate layer contributions
+    n_lay_cont[,1] <- c(calculate.layer.contribution(conStruct.results[[1]], data.block), rep(0,4))
+    tmp <- conStruct.results[[1]]$MAP$admix.proportions
+
+
+    for(i in 2:5){
+        load(paste0("north-subsp_sp_rep", j, "K", i, "_conStruct.results.Robj"))
+        load(paste0("north-subsp_sp_rep", j, "K", i, "_data.block.Robj"))
+
+        # match layers up across runs to keep plotting colors consistent
+        # for the same layers in different runs
+        tmp.order <- match.layers.x.runs(tmp, conStruct.results[[1]]$MAP$admix.proportions)  
+
+        # calculate layer contributions
+        n_lay_cont[, i] <- c(calculate.layer.contribution(conStruct.results = conStruct.results[[1]],
+                                                                data.block = data.block,
+                                                                layer.order = tmp.order),
+                                        rep(0, 5-i))
+        tmp <- conStruct.results[[1]]$MAP$admix.proportions[, tmp.order]
+    }
+        write_delim(x = data.frame(n_lay_cont), file = paste0("north-subsp_sp_rep", j, "_layer_contributions.tsv"),
+                    delim = "\t", col_names = FALSE)
+
+        # visualize layer contributions across values of K
+        pdf(paste0("north-subsp_sp_rep", j, "_layer_contributions.pdf"))
+                barplot(n_lay_cont,
+                col = c("blue", "red", "goldenrod1", "forestgreen", "darkorchid1"),
+                xlab = "Values of K",
+                ylab = "layer contributions",
+                names.arg = paste0("K=", 1:5))
+        dev.off()
+}
+
+for(j in 1:8){
+    s_lay_cont <- matrix(NA, nrow = 4, ncol = 4)
+
+    load(paste0("south-subsp_sp_rep", j, "K1", "_conStruct.results.Robj"))
+    load(paste0("south-subsp_sp_rep", j, "K1", "_data.block.Robj"))
+
+    # calculate layer contributions
+    s_lay_cont[,1] <- c(calculate.layer.contribution(conStruct.results[[1]], data.block), rep(0,3))
+    tmp <- conStruct.results[[1]]$MAP$admix.proportions
+
+
+    for(i in 2:4){
+        load(paste0("south-subsp_sp_rep", j, "K", i, "_conStruct.results.Robj"))
+        load(paste0("south-subsp_sp_rep", j, "K", i, "_data.block.Robj"))
+
+        # match layers up across runs to keep plotting colors consistent
+        # for the same layers in different runs
+        tmp.order <- match.layers.x.runs(tmp, conStruct.results[[1]]$MAP$admix.proportions)  
+
+        # calculate layer contributions
+        s_lay_cont[, i] <- c(calculate.layer.contribution(conStruct.results = conStruct.results[[1]],
+                                                                data.block = data.block,
+                                                                layer.order = tmp.order),
+                                        rep(0, 4-i))
+        tmp <- conStruct.results[[1]]$MAP$admix.proportions[, tmp.order]
+    }
+        write_delim(x = data.frame(s_lay_cont), file = paste0("south-subsp_sp_rep", j, "_layer_contributions.tsv"),
+                    delim = "\t", col_names = FALSE)
+
+        # visualize layer contributions across values of K
+        pdf(paste0("south-subsp_sp_rep", j, "_layer_contributions.pdf"))
+                barplot(s_lay_cont,
+                col = c("blue", "red", "goldenrod1", "forestgreen", "darkorchid1"),
+                xlab = "Values of K",
+                ylab = "layer contributions",
+                names.arg = paste0("K=", 1:4))
+        dev.off()
+}
 
 ```
 
