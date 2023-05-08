@@ -4,6 +4,7 @@ library(tidyverse)
 library(LEA)
 library(sf)
 library(terra)
+library(tidyterra)
 library(ggmap)
 library(marmap)
 library(scatterpie)
@@ -87,7 +88,7 @@ north_snmf <- load.snmfProject("lea/distichus/north/distichus-north-island-no-mi
     for (i in 1:6){
         print(mean(cross.entropy(north_snmf, K = i)))
     }
-    k <- 
+    k <- 4
     ce <- cross.entropy(north_snmf, K = k)
     best_run <- which.min(ce)
         print(paste0("The lowest cross entropy score for a K of ", k, " is ", ce[best_run]))
@@ -96,18 +97,20 @@ north_snmf <- load.snmfProject("lea/distichus/north/distichus-north-island-no-mi
     Qmatrix  <- tess3r::as.qmatrix(n_qmatrix)
 
     # get cluster assignments per individual
-    cluster <- apply(qmatrix, 1, which.max)
+    cluster <- apply(n_qmatrix, 1, which.max)
 
     n_df <- as_tibble(cbind(RAD_data_north[,c("Sample_ID_pop", "Locality", "Longitude", "Latitude")], cluster, n_qmatrix))
         colnames(n_df) <- c("specimen", "locality", "longitude", "latitude", "cluster", "V1", "V2", "V3", "V4")
-        #write_delim(x = df, file = "", col_names = TRUE, delim = "\t")
-        n_df <- n_df[order(as.numeric(n_df$cluster)), ]
+        # write_delim(x = n_df, file = "lea/distichus/north/north-island-subsp-K4.tsv", col_names = TRUE, delim = "\t")
+        n_df <- n_df %>% arrange(cluster, longitude)
 
     n_colors <- c("sienna", "goldenrod1", "seashell4", "orangered")
-    barplot(t(n_df[, 6:ncol(n_df)]), col = n_colors, names.arg = n_df$specimen, las = 2, cex.names = 0.3, border = NA)
+    pdf("lea/distichus/north/north-island-subsp-K4-STRUCTURE-plot.pdf", width = 17, height = 9)
+        barplot(t(n_df[, 6:ncol(n_df)]), col = n_colors, names.arg = n_df$specimen, las = 2, cex.names = 0.3, border = NA)
+    dev.off()
 
     clusters <- grep("V", names(n_df))
-    n_avg_admix <- aggregate(n_df[, clusters], by = n_df[, c("locality", "longitude", "latitude")], mean)
+    n_avg_admix <- stats::aggregate(n_df[, clusters], by = n_df[, c("locality", "longitude", "latitude")], mean)
 
 north <- basemap + new_scale_fill() +
         geom_scatterpie(aes(x = longitude, y = latitude, group = locality), data = n_avg_admix, cols = colnames(n_avg_admix[, 4:ncol(n_avg_admix)]), alpha = 1) +
@@ -133,11 +136,13 @@ south_snmf <- load.snmfProject("lea/distichus/south/distichus-south-island-no-mi
 
     s_df <- as_tibble(cbind(RAD_data_south[,c("Sample_ID_pop", "Locality", "Longitude", "Latitude")], cluster, s_qmatrix))
         colnames(s_df) <- c("specimen", "locality", "longitude", "latitude", "cluster", "V1", "V2", "V3")
-        #write_delim(x = df, file = "", col_names = TRUE, delim = "\t")
-        s_df <- s_df[order(as.numeric(s_df$cluster)), ]
+        write_delim(x = s_df, file = "lea/distichus/south/south-island-subsp-K3.tsv", col_names = TRUE, delim = "\t")
+        s_df <- s_df %>% arrange(cluster, longitude)
 
     s_colors <- c("dodgerblue", "burlywood", "darkorchid2")
-    barplot(t(s_df[, 6:ncol(s_df)]), col = s_colors, names.arg = s_df$specimen, las = 2, cex.names = 0.3, border = NA)
+    pdf("lea/distichus/south/south-island-subsp-K3-STRUCTURE-plot.pdf", width = 8, height = 9)
+        barplot(t(s_df[, 6:ncol(s_df)]), col = s_colors, names.arg = s_df$specimen, las = 2, cex.names = 0.3, border = NA)
+    dev.off()
 
     clusters <- grep("V", names(s_df))
     s_avg_admix <- aggregate(s_df[, clusters], by = s_df[, c("locality", "longitude", "latitude")], mean)

@@ -3,7 +3,7 @@ title: Population Structure
 output: html_document
 ---
 
-# Update vcf object to be more user friendly
+<!-- # Update vcf object to be more user friendly
 ```{bash}
 conda activate genomics_env
 
@@ -14,7 +14,7 @@ vcftools --vcf variants_no-miss_50KbLD_pruned.recode.vcf --keep /home/tcm0036/di
 awk '{print $2}' distichus-popmap-cleaned-master.tsv | tail -n273 > new-sample_IDs.txt  
 bcftools view variants_no-miss_50KbLD_cleaned.recode.vcf | bcftools reheader --samples new-sample_IDs.txt -o variants_no-miss_50KbLD_cleaned_inform_IDs.vcf
 ```
-
+ -->
 
 # Load R packages
 ```{r}
@@ -258,7 +258,7 @@ dev.off()
 ```
 
 ####################################################################################
-# Process VCF without missing data into STRUCTURE formatted file for conStruct input
+<!-- # Process VCF without missing data into STRUCTURE formatted file for conStruct input
 ```{bash}
 
 cd conStruct/
@@ -272,7 +272,7 @@ plink --vcf distichus-spgrp-Hispaniola-no-missing-LD-pruned.recode.vcf --double-
 
 # And get rid of two header lines to leave just sample information
 tail -n251 distichus-spgroup-conStruct.recode.strct_in > distichus-spgroup-noheader-conStruct.str
-```
+``` -->
 
 # Below code is used to run conStruct
 ```{r}
@@ -360,7 +360,7 @@ nsp_results <- as.matrix(read_table('north/north-subsp_nsp_xval_results.txt'))
 nsp_CIs <- apply(nsp_results, 1, function(x){mean(x) + c(-1.96,1.96) * sd(x)/length(x)})
 
 pdf("north/North-paleo-island-cross-val-results.pdf")
-    par(mfrow = c(2, 1))
+    par(mfrow = c(1, 2))
     plot(rowMeans(sp_results),
         pch = 19, col = "blue",
         ylab="predictive accuracy", xlab = "values of K",
@@ -486,6 +486,45 @@ for(j in 1:8){
         # visualize layer contributions across values of K
         pdf(paste0("south-subsp_sp_rep", j, "_layer_contributions.pdf"))
                 barplot(s_lay_cont,
+                col = c("blue", "red", "goldenrod1", "forestgreen", "darkorchid1"),
+                xlab = "Values of K",
+                ylab = "layer contributions",
+                names.arg = paste0("K=", 1:4))
+        dev.off()
+}
+
+for(j in 1:10){
+    brev_lay_cont <- matrix(NA, nrow = 4, ncol = 4)
+
+    load(paste0("brevirostris-_sp_rep", j, "K1", "_conStruct.results.Robj"))
+    load(paste0("brevirostris-_sp_rep", j, "K1", "_data.block.Robj"))
+
+    # calculate layer contributions
+    brev_lay_cont[,1] <- c(calculate.layer.contribution(conStruct.results[[1]], data.block), rep(0,3))
+    tmp <- conStruct.results[[1]]$MAP$admix.proportions
+
+
+    for(i in 2:4){
+        load(paste0("brevirostris-_sp_rep", j, "K", i, "_conStruct.results.Robj"))
+        load(paste0("brevirostris-_sp_rep", j, "K", i, "_data.block.Robj"))
+
+        # match layers up across runs to keep plotting colors consistent
+        # for the same layers in different runs
+        tmp.order <- match.layers.x.runs(tmp, conStruct.results[[1]]$MAP$admix.proportions)  
+
+        # calculate layer contributions
+        brev_lay_cont[, i] <- c(calculate.layer.contribution(conStruct.results = conStruct.results[[1]],
+                                                                data.block = data.block,
+                                                                layer.order = tmp.order),
+                                        rep(0, 4-i))
+        tmp <- conStruct.results[[1]]$MAP$admix.proportions[, tmp.order]
+    }
+        write_delim(x = data.frame(brev_lay_cont), file = paste0("brevirostris-_sp_rep", j, "_layer_contributions.tsv"),
+                    delim = "\t", col_names = FALSE)
+
+        # visualize layer contributions across values of K
+        pdf(paste0("brevirostris-_sp_rep", j, "_layer_contributions.pdf"))
+                barplot(brev_lay_cont,
                 col = c("blue", "red", "goldenrod1", "forestgreen", "darkorchid1"),
                 xlab = "Values of K",
                 ylab = "layer contributions",
