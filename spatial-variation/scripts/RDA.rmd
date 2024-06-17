@@ -1,0 +1,732 @@
+
+```{r}
+# load R packages
+library(psych)    # Used to investigate correlations among predictors
+library(corrplot)
+library(vegan)    # Used to run RDA
+library(adegenet)
+library(caret)
+library(sf)
+library(terra)
+library(sp)
+library(simba)
+library(ggpubr)
+library(adespatial)
+library(tidyverse)
+library(vcfR)
+library(ape)
+library(GenomicRanges)
+library(cowplot)
+```
+
+# Load functions from Borcard et al. (2018) Numerical Ecology textbook
+```{r}
+load_funcs <- function() {
+  # CA.newr
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/CA.newr.R")
+  # PCA.newr
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/PCA.newr.R")
+  # Rao
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/Rao.R")
+  # bartlett.perm
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/bartlett.perm.R")
+  # boxplerk
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/boxplerk.R")
+  # boxplert
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/boxplert.R")
+  # cleanplot.pca
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/cleanplot.pca.R")
+  # coldiss
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/coldiss.R")
+  # drawmap
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/drawmap.R")
+  # drawmap3
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/drawmap3.R")
+  # hcoplot
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/hcoplot.R")
+  # panelutils
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/panelutils.R")
+  # plot.lda
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/plot.lda.R")
+  # plot.links
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/plot.links.R")
+  # polyvars
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/polyvars.R")
+  # quickMEM
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/quickMEM.R")
+  # scalog
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/scalog.R")
+  # screestick
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/screestick.R")
+  # sr.value
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/sr.value.R")
+  # triplot.rda
+  source("https://raw.githubusercontent.com/zdealveindy/anadat-r/master/scripts/NumEcolR2/triplot.rda.R")
+}
+load_funcs()
+```
+
+## Load and prepare input data
+```{r}
+## Load imputed VCF (139,964 SNPs for 191 specimens)
+# vcf <- read.vcfR("/scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/vcf/distichus-subsp-only/imputation/distichus_geno0.8_ind0.8_maf0.05_dp4_imputed.vcf")
+## Load imputed VCF filtered for linkage-disequilibrium (39,427 SNPs for 191 specimens)
+vcf <- read.vcfR("/scratch/tcm0036/distichus-ddRAD/alignments/AnoDist/vcf/distichus-subsp-only/imputation/distichus_imp_LD.vcf")
+vcf
+
+## Load specimen information
+columns <- c("specimen", "specimen_pop", "filepath", "subspecies", "population", "complex", "island", "locality", "longitude", "latitude", "note")
+# RAD_data <- read_table("~/distichus-ddRAD/info/distichus-species-group-Hispaniola-only-popmap-cleaned.tsv", col_names = FALSE)
+RAD_data <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/info/distichus-species-group-Hispaniola-only-popmap-cleaned.tsv", col_names = FALSE)
+        colnames(RAD_data) <- columns
+
+## Isolate per-sampling locality information
+coords <- distinct(RAD_data[, c("locality", "longitude", "latitude")])
+        dim(coords)
+## Project coordinates
+latlong <- SpatialPoints(coords[, c("longitude", "latitude")], proj4string = CRS("+proj=longlat"))
+
+dist_xy <- as.data.frame(spTransform(latlong, CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")))
+
+dat <- vcfR2genind(vcf)
+        pop(dat) <- RAD_data$locality
+
+pop_data <- genind2genpop(dat)
+pop_data
+
+print(rownames(pop_data@tab) == coords$locality) # populations ordered correctly
+
+## Need to go from counts to frequencies
+freq <- makefreq(pop_data)
+        ncol(freq)
+        nrow(freq)
+
+s <- seq(from = 1, to = ncol(freq), by = 2)
+freq_l1 <- freq[, s]
+
+## Perform Hellinger transformation of allele frequencies
+freq_h <- decostand(freq_l1, method = "hellinger", MARGIN = 2)
+```
+
+## Import ancestry proportions for labelling plots
+```{r}
+# Take ADMIXTURE results for K = 5 from ~95% complete dataset
+K_5_geno <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/population-structure/ADMIXTURE_PCA/geno90/distichus_geno90_filtered_LD_50kb_100_0.1_ready.5.Q", col_names=F)
+cluster <- apply(K_5_geno, 1, which.max)
+adm_Q <- as_tibble(cbind(RAD_data[, c("specimen_pop", "locality", "longitude", "latitude")], cluster, K_5_geno))
+
+# For Western subset hierarchical clusters
+RAD_data_south <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/info/south-island-dataset-master.tsv", col_names = FALSE)
+        colnames(RAD_data_south) <- columns
+south_Q <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/population-structure/ADMIXTURE_PCA/hierarchical-analyses/south/geno90/south_geno90_50_100_0.1_ready.3.Q", col_names = FALSE)
+        cluster <- apply(south_Q, 1, which.max)
+        south_Q <- as_tibble(cbind(RAD_data_south[, c("specimen_pop", "locality", "longitude", "latitude")], cluster, south_Q))
+        adm_Q$specimen_pop[adm_Q$cluster == 1] == south_Q$specimen_pop # sanity check
+        south_Q$cluster[south_Q$cluster == 1] <- 6
+        south_Q$cluster[south_Q$cluster == 2] <- 7
+        south_Q$cluster[south_Q$cluster == 3] <- 8
+adm_Q$cluster[adm_Q$cluster==1] <- south_Q$cluster
+
+
+perloc <- distinct(adm_Q[, c("locality", "longitude", "latitude", "cluster")])
+perloc <- perloc[-c(9,32),] # these localities have two clusters present so go with first
+perloc$locality == coords$locality
+
+clust <- perloc$cluster
+#bg <- c("sienna", "darkorchid2", "orangered", "seashell4", "goldenrod1", "dodgerblue", "burlywood")
+# bg <- c("dodgerblue1", "sienna", "yellow", "gray80", "orangered")
+bg <- c("sienna", "yellow", "gray80", "orangered", "dodgerblue3", "burlywood3", "darkorchid2")
+```
+
+## Estimate dbMEMs
+```{r}
+# Estimate dbMEMs on a per-locality basis
+dbmem_all <- dbmem(dist_xy)
+        save(dbmem_all, file = "distichus-dbMEMs.RData")
+```
+
+```{r}
+## Run quickMEM function
+dbMEM_1 <- quickMEM(freq_l1, dist_xy, perm.max = 999, method = "fwd")
+        save(dbmem_1, file = "distichus-quickMEM.RData")
+```
+
+## Visualize dbMEMs
+```{r}
+# pdf("selected-dbMEMs-non-transformed.pdf")
+# par(mfrow = c(3,3))
+# for (i in sel_mems){
+#         sr.value(dist_xy, dbMEM_1$dbMEM_red_model[, paste0("MEM", i)],
+#                 sub = paste0("dbMEM", i),
+#                 xlim = c(-74, -68), ylim = c(18, 20)) # Set size to Hispaniola
+# }
+# dev.off()
+
+load(#"rda/LD_pruned/hellinger-transformed-quickMEM.RData"
+        "hellinger-transformed-quickMEM.RData")
+sel_mems <- c(1, 3, 4, 5, 6, 7, 10, 14)
+
+pdf("~/Dropbox/Apps/Overleaf/Anolis distichus Population Genomics ms/supp-mat/selected-dbMEMs-hellinger-transformed-LD-imp.pdf")
+par(mfrow = c(3, 3))
+for (i in sel_mems){
+        sr.value(dist_xy, quickMEMs$dbMEM_red_model[, paste0("MEM", i)],
+                sub = paste0("dbMEM", i),
+                xlim = c(-75, -68), ylim = c(18, 20)) # Set size to Hispaniola
+}
+dev.off()
+```
+
+# Run RDA with only environmental predictors chosen based on VIF thresholds
+```{r}
+env <- read_table("selected-environmental-variables.tsv")
+env <- distinct(env)
+dim(env)
+print(env[, c(1:3)] == coords)
+env <- env[, -c(1:3)] # drop locality information
+
+full_rda <- rda(freq_h ~ ., data = env, scale = TRUE)
+save(full_rda, "full-environmental-RDA.RData")
+
+RsquareAdj(full_rda)
+
+summary(eigenvals(full_rda, model = "constrained"))
+
+sig_full <- anova.cca(full_rda)
+
+vif.cca(full_rda)
+```
+
+# Plot full environmental RDA results
+```{r}
+
+pdf("rda-no-constraint-full-env.pdf")
+    plot(full_rda, type = "n", scaling = 3)
+    points(full_rda, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 2)) # SNPs in this case
+    points(full_rda, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 2)) # lizards
+    text(full_rda, scaling = 3, display = "bp", col = "#0868ac", cex = 1) # predictor variables
+    legend("topright", legend = levels(as.factor(clust)), bty = "n", col = "gray32", pch = 21, cex = 1, pt.bg = bg)
+dev.off()
+```
+
+## Variable selection, constraining on space
+```{r}
+env_rda_cond <- rda(freq_h, env, dbMEM_2$dbMEM_red_model)
+        save(env_rda_cond, file = "full-env-dbRDA.RData")
+(env_rda_cond_r2a <- RsquareAdj(env_rda_cond)$r.squared)
+
+null_m <- rda(freq_h ~ Condition(as.matrix(dbMEM_2$dbMEM_red_model)), data = env)
+
+full_m <- rda(freq_h ~ . + Condition(as.matrix(dbMEM_2$dbMEM_red_model)), env)
+
+ordi <- ordistep(null_m, scope = formula(full_m), direction = "forward")
+        save(ordi, file = "fwdsel-dbRDA.RData")
+
+# Print significant environmental predictors
+ordi$anova
+```
+
+## Plot dbRDA results
+# ```{r}
+# better_labs <- c("BIO15", "BIO18", "BIO3", "BIO4", "BIO9", "CLT max.", "CLT min.", "CMI range", "HURS max.", "HURS range", "PET range", "RSDS max.", "Wind min.", "SWB", "Dry EVI", "Wet EVI", "Wet NDVI", "Alt")
+# clust_labs <- c(expression("West "*italic("A. distichus")), expression("East "*italic("A. d. dominicensis")),
+#                 expression(italic("A. d. ravitergum")), expression(italic("A. d. properus")), expression(italic("A. d. ignigularis")))
+
+# pdf("~/Dropbox/Apps/Overleaf/Anolis distichus Population Genomics ms/figures/dbRDA-full-env.pdf", width = 16, height = 10)
+#     par(mfrow=c(1, 2))
+#     # Plot RDA1 and RDA2
+#     plot(env_rda_cond, type = "n", scaling = 3)
+#     points(env_rda_cond, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 2)) # SNPs in this case
+#     points(env_rda_cond, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 2)) # lizards
+#     text(env_rda_cond, labels = better_labs, scaling = 3, display = "bp", col = "#0868ac", cex = 1) # predictor variables
+#     legend("bottomleft", legend = clust_labs, bty = "n", col = "gray32", pch = 21, cex = 1, pt.bg = bg)
+#     # Now do RDA1 and RDA3
+#     plot(env_rda_cond, type = "n", scaling = 3, choices = c(1, 3))
+#     points(env_rda_cond, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 3)) # SNPs in this case
+#     points(env_rda_cond, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 3)) # lizards
+#     text(env_rda_cond, labels = better_labs, scaling = 3, display = "bp", col = "#0868ac", cex = 1, choices = c(1, 3)) # predictor variables
+# dev.off()
+# ```
+
+# Examine loadings of RDAs
+```{r}
+# "Species" (SNP) scores for first three constrained axes
+full_cond_loads <- scores(env_rda_cond, choice = c(1:3), display = "species")
+
+outliers <- function(x, z){
+  lims <- mean(x) + c(-1, 1) * z * sd(x)     # find loadings +/-z sd from mean loading     
+  x[x < lims[1] | x > lims[2]]               # locus names in these tails
+}
+
+cand_rd1 <- outliers(full_cond_loads[, 1], 4)
+cand_rd2 <- outliers(full_cond_loads[, 2], 4)
+cand_rd3 <- outliers(full_cond_loads[, 3], 4)
+
+ncand <- length(cand_rd1) + length(cand_rd2) + length(cand_rd3)
+
+cand1 <- cbind.data.frame(rep(1, times=length(cand_rd1)), names(cand_rd1), unname(cand_rd1))
+cand2 <- cbind.data.frame(rep(2, times=length(cand_rd2)), names(cand_rd2), unname(cand_rd2))
+cand3 <- cbind.data.frame(rep(3, times=length(cand_rd3)), names(cand_rd3), unname(cand_rd3))
+colnames(cand1) <- colnames(cand2) <- colnames(cand3) <- c("axis","snp","loading")
+
+cands <- rbind(cand1, cand2, cand3)
+
+length(cands$snp[duplicated(cands$snp)])
+
+cands <- cands[!duplicated(cands$snp), ]
+```
+
+# Run dbRDA with narrowed selection of environmental variables
+```{r}
+# ordi_vars <- c("clt_min", "elevation_30sec", "bio4", "clt_max", "bio18", "bio9", "rsds_1981.2010_max_V.2.1", "cmi_range", "bio3")
+ordi_vars <- c("clt_min", "elevation_30sec", "bio4", "bio18", "bio9", "cmi_range", "bio3") # clt_max and rsds_max removed for VIFs over 10
+cond_env <- env[ordi_vars]
+
+dbRDA <- rda(freq_h, cond_env, dbMEM_2$dbMEM_red_model)
+        save(dbRDA, file = "conditional-environment-dbRDA.RData")
+
+RsquareAdj(dbRDA)
+
+summary(dbRDA)
+
+sig_dbRDA <- anova.cca(dbRDA)
+        save(sig_dbRDA, file = "anova-cca-dbRDA.RData")
+
+#better_labs <- c("Min. Cloud Cover", "Altitude", "BIO4", "Max. Cloud Cover", "BIO18", "BIO9", "Max. Shortwave Flux", "Climate Moisture Index range", "BIO3")
+better_labs <- c("Min. Cloud Cover", "Altitude", "BIO4", "BIO18", "BIO9", "Climate Moisture Index range", "BIO3")
+clust_labs <- c(expression("West "*italic("A. distichus")), expression("East "*italic("A. d. dominicensis")), expression(italic("A. d. ravitergum")), expression(italic("A. d. properus")), expression(italic("A. d. ignigularis")))
+## For splitting western subset into clusters
+clust_labs <- c(expression("East "*italic("A. d. dominicensis")), expression(italic("A. d. ravitergum")), expression(italic("A. d. properus")), expression(italic("A. d. ignigularis")), expression("Tiburón "*italic("A. distichus")*" subspecies"), expression("West "*italic("A. d. dominicensis")), expression(italic("A. d. favillarum")))
+
+# pdf("~/Dropbox/Apps/Overleaf/Anolis distichus Population Genomics ms/figures/dbRDA-fwd-sel-env.pdf", width = 16, height = 10)
+#     par(mfrow=c(1, 2))
+#     # Plot RDA1 and RDA2
+#     plot(dbRDA_2, type = "n", scaling = 3)
+#     points(dbRDA_2, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 2)) # SNPs in this case
+#     points(dbRDA_2, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 2)) # lizards
+#     #text(dbRDA_2, labels = better_labs, scaling = 3, display = "bp", col = "#0868ac", cex = 1) # predictor variables
+#     text(dbRDA_2, scaling = 3, display = "bp", col = "#0868ac", cex = 1) # predictor variables
+#     legend("topright", legend = clust_labs, bty = "n", col = "gray32", pch = 21, cex = 1, pt.bg = bg)
+#     # Now do RDA1 and RDA3
+#     plot(dbRDA_2, type = "n", scaling = 3, choices = c(1, 3))
+#     points(dbRDA_2, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 3)) # SNPs in this case
+#     points(dbRDA_2, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 3)) # lizards
+#     #text(dbRDA_2, labels = better_labs, scaling = 3, display = "bp", col = "#0868ac", cex = 1, choices = c(1, 3)) # predictor variables
+#     text(dbRDA_2, scaling = 3, display = "bp", col = "#0868ac", cex = 1, choices = c(1, 3)) # predictor variables
+# dev.off()
+
+pdf("~/Dropbox/Apps/Overleaf/Anolis distichus Population Genomics ms/figures/dbRDA-fwd-sel-env.pdf", width = 10, height = 10)#, width = 16, height = 10)
+#     par(mfrow=c(1, 2))
+    # Plot RDA1 and RDA2
+    plot(dbRDA_scaleF, type = "n", scaling = 3, xlab = "RDA1 locality score (45.54% explained)", ylab = "RDA2 locality score (14.19%)")
+#    points(dbRDA_scaleF, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 2)) # SNPs in this case
+     points(dbRDA_scaleF, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 2)) # lizards
+    #text(dbRDA_scaleF, labels = better_labs, scaling = 3, display = "bp", col = "#0868ac", cex = 1) # predictor variables
+    text(dbRDA_scaleF, scaling = 3, display = "bp", col = "#0868ac", cex = 1) # predictor variables
+    legend("topleft", legend = clust_labs, bty = "n", col = "gray32", pch = 21, cex = 1, pt.bg = bg)
+#     # Now do RDA1 and RDA3
+#     plot(dbRDA_scaleF, type = "n", scaling = 3, choices = c(1, 3))
+#     points(dbRDA_scaleF, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 3)) # SNPs in this case
+#     points(dbRDA_scaleF, display = "sites", pch = 21, cex = 1.3, col = "gray32", scaling = 3, bg = bg[as.factor(clust)], choices = c(1, 3)) # lizards
+#     #text(dbRDA_scaleF, labels = better_labs, scaling = 3, display = "bp", col = "#0868ac", cex = 1, choices = c(1, 3)) # predictor variables
+#     text(dbRDA_scaleF, scaling = 3, display = "bp", col = "#0868ac", cex = 1, choices = c(1, 3)) # predictor variables
+dev.off()
+```
+
+## Population plot (ggplot solution)
+```{r}
+# For plotting axis labels
+var_loads <- data.frame(scores(dbRDA_scaleF, choices = c(1:3), display = "bp"))
+        var_loads$var <- rownames(var_loads)
+
+pop_loads <- as.data.frame(cbind(scores(dbRDA_scaleF, choices = c(1:3), display = "sites"), perloc))
+pop_loads$cluster <- as.factor(pop_loads$cluster)
+
+snp_loads <- as.data.frame(scores(dbRDA_scaleF, choices = 1:3, display = "species"))
+snp_loads$snp <- rownames(snp_loads)
+
+pop_plot <- ggplot() + geom_segment(data = var_loads, aes(x = 0, y = 0, xend = RDA1*5, yend = RDA2*5), #arrow(length = unit(1/4, "picas")), 
+                color = "black", size = 0.25) +
+        ## Label variable loadings --- x and y values chosen after visualizing plot
+        annotate("text", x = -4.2, y = -0.25, size = 5, label = "Min. Cloud Cover") +
+        annotate("text", x = 0.5, y = 1.5, size = 5, label = "Altitude") +
+        annotate("text", x = -3.4, y = 2.7, size = 5, label = "BIO4") +
+        annotate("text", x = -0.275, y = -0.8, size = 5, label = "BIO18") +
+        annotate("text", x = -0.5, y = 0.15, size = 5, label = "BIO9") +
+        annotate("text", x = -2.55, y = -0.5, size = 5, label = "Climate Moisture Index Range") +
+        annotate("text", x = -0.1, y = -1.65, size = 5, label = "BIO3") +
+        ## Add points
+        geom_point(data = pop_loads, aes(x = RDA1, y = RDA2, fill = cluster), color = "black", stroke = 0.2, pch = 21, size = 2.5) +
+        scale_fill_manual(values = bg, labels = clust_labs) +
+        labs(x = "RDA1 (45.54%)", y = "RDA2 (14.19%)", fill = "Genomic Cluster") +
+        ggtitle("A.") +
+        theme_minimal() +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+                axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain"))
+ggsave("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ms-figures/dbRDA-pop-biplot.pdf")
+```
+
+# Plot dbRDA just SNP cloud
+```{r}
+snp_plot <- ggplot() + geom_point(data = snp_loads, aes(x = RDA1, y = RDA2), fill = "gray", size = 1.75, stroke = 0.2, alpha = 0.5, color = "black", pch = 21) +
+        geom_point(data = snp_loads[rda_cands$snp[rda_cands$axis == 1], ], aes(x = RDA1, y = RDA2), fill = "blue", size = 1.8, stroke = 0.2, color = "black", pch = 21) +
+        geom_point(data = snp_loads[rda_cands$snp[rda_cands$axis == 2], ], aes(x = RDA1, y = RDA2), fill = "red", size = 1.8, stroke = 0.2, color = "black", pch = 21) +
+        # geom_point(data = loadings[rda_cands$snp[rda_cands$cor == "clt_min" & (rda_cands$axis == 1 | rda_cands$axis == 2)], ], aes(x = RDA1, y = RDA2), fill = "red", size = 1.8, stroke = 0.2, color = "black", pch = 21) +
+        # geom_point(data = loadings[rda_cands$snp[rda_cands$cor == "bio4" & (rda_cands$axis == 1 | rda_cands$axis == 2)], ], aes(x = RDA1, y = RDA2), fill = "blue", size = 1.8, stroke = 0.2, color = "black", pch = 21) +
+        geom_segment(data = var_loads[1,], aes(x = 0, y = 0, xend=RDA1*0.2, yend=RDA2*0.2), color = "royalblue4", size = 1) +
+        geom_segment(data = var_loads[2,], aes(x = 0, y = 0, xend=RDA1*0.2, yend=RDA2*0.2), color = "darkred", size = 1) +
+        annotate("text", x = -0.16, y = -0.009, label = "Min. Cloud Cover", size = 5) +
+        annotate("text", x = 0.035, y = 0.045, label = "Altitude", size = 5) +
+        # geom_segment(data = var_loads[3,], aes(x = 0, y = 0, xend=RDA1*0.2, yend=RDA2*0.2)) +
+        # geom_segment(data = var_loads[4,], aes(x = 0, y = 0, xend=RDA1*0.2, yend=RDA2*0.2)) +
+        # geom_segment(data = var_loads[5,], aes(x = 0, y = 0, xend = RDA1*0.2, yend = RDA2*0.2)) +
+        # geom_segment(data = var_loads[6,], aes(x = 0, y = 0, xend = RDA1*0.2, yend = RDA2*0.2)) +
+        # geom_segment(data = var_loads[7,], aes(x = 0, y = 0, xend = RDA1*0.2, yend = RDA2*0.2), color = "yellow")
+        ggtitle("B.") +
+        theme_minimal() +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+                axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain"))
+ggsave("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ms-figures/dbRDA-snp-biplot.pdf")
+final_plot <- plot_grid(pop_plot, snp_plot, rel_widths = c(3,1.5), nrow = 1)
+ggsave("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ms-figures/dbRDA-biplots-final.pdf", final_plot)#, width = 9, height = 7, units = "in")
+```
+
+
+# Examine loadings in dbRDA with reduced set of environmental predictors
+```{r}
+loadings <- scores(dbRDA_scaleF, choice = c(1:3), display = "species")
+
+cand_rd1 <- outliers(loadings[, 1], 3.5)
+cand_rd2 <- outliers(loadings[, 2], 3.5)
+cand_rd3 <- outliers(loadings[, 3], 3.5)
+
+ncand <- length(cand_rd1) + length(cand_rd2) + length(cand_rd3)
+ncand
+
+cand1 <- cbind.data.frame(rep(1, times=length(cand_rd1)), names(cand_rd1), unname(cand_rd1))
+cand2 <- cbind.data.frame(rep(2, times=length(cand_rd2)), names(cand_rd2), unname(cand_rd2))
+cand3 <- cbind.data.frame(rep(3, times=length(cand_rd3)), names(cand_rd3), unname(cand_rd3))
+colnames(cand1) <- colnames(cand2) <- colnames(cand3) <- c("axis","snp","loading")
+
+cands <- rbind(cand1, cand2, cand3)
+
+## Are any candidate SNPs outliers for multiple axes?
+length(cands$snp[duplicated(cands$snp)])
+
+cands <- cands[!duplicated(cands$snp), ]
+cands$snp <- gsub("\\..*", "", cands$snp)
+
+# loadings <- scores(dbRDA_scaleF, choice = c(1:4), display = "species")
+
+# cand_rd1 <- outliers(loadings[, 1], 4)
+# cand_rd2 <- outliers(loadings[, 2], 4)
+# cand_rd3 <- outliers(loadings[, 3], 4)
+# cand_rd4 <- outliers(loadings[, 4], 4)
+# ncand <- length(cand_rd1) + length(cand_rd2) + length(cand_rd3) + length(cand_rd4)
+
+# cand1 <- cbind.data.frame(rep(1, times=length(cand_rd1)), names(cand_rd1), unname(cand_rd1))
+# cand2 <- cbind.data.frame(rep(2, times=length(cand_rd2)), names(cand_rd2), unname(cand_rd2))
+# cand3 <- cbind.data.frame(rep(3, times=length(cand_rd3)), names(cand_rd3), unname(cand_rd3))
+# cand4 <- cbind.data.frame(rep(4, times=length(cand_rd4)), names(cand_rd4), unname(cand_rd4))
+# colnames(cand1) <- colnames(cand2) <- colnames(cand3) <- colnames(cand4) <- c("axis","snp","loading")
+
+# cands <- rbind(cand1, cand2, cand3, cand4)
+# cands <- cands[!duplicated(cands$snp), ]
+# cands$snp <- gsub("\\..*", "", cands$snp)
+
+write.table(cands, "dbRDA-candidate-SNPs-scaleF.tsv", quote = FALSE, row.names = FALSE, col.names = TRUE)
+rda_cands <- read_table("rda/LD_pruned/dbRDA-candidate-SNPs-scaleF.tsv")
+```
+
+# Estimate collinearity between SNPs and environmental variables
+```{r}
+env_cor <- data.frame(matrix(nrow = length(rda_cands$snp), ncol = 7))
+colnames(env_cor) <- ordi_vars
+
+cond_env <- as.data.frame(cond_env)
+
+for (i in 1:length(rda_cands$snp)){
+        name <- rda_cands[i, "snp"]
+        snp_frq <- freq_h[, name]
+
+        env_cor[i, "clt_min"] <- cor(as.numeric(cond_env[, "clt_min"]), 
+                                snp_frq)
+        env_cor[i, "elevation_30sec"] <- cor(as.numeric(cond_env[, "elevation_30sec"]), 
+                                snp_frq)
+        env_cor[i, "bio4"] <- cor(as.numeric(cond_env[, "bio4"]), 
+                                snp_frq)
+        env_cor[i, "bio18"] <- cor(as.numeric(cond_env[, "bio18"]), 
+                                snp_frq)
+        env_cor[i, "bio9"] <- cor(as.numeric(cond_env[, "bio9"]), 
+                                snp_frq)
+        env_cor[i, "cmi_range"] <- cor(as.numeric(cond_env[, "cmi_range"]), 
+                                snp_frq)
+        env_cor[i, "bio3"] <- cor(as.numeric(cond_env[, "bio3"]), 
+                                snp_frq)
+}
+
+## Combine environmental predictor correlations to df with candidate SNPs
+rda_cands <- data.frame(cbind(rda_cands, env_cor))
+write.table(rda_cands, "dbRDA-scaleF-variable-correlations.tsv", quote = FALSE, row.names = FALSE, col.names = TRUE)
+```
+
+# Identify which variable each outlier SNP is most associated with
+```{r}
+for (i in 1:length(rda_cands$snp)) {
+  bar <- rda_cands[i,]
+  rda_cands[i,11] <- names(which.max(abs(bar[4:10]))) # gives the variable
+  rda_cands[i,12] <- max(abs(bar[4:10]))              # gives the correlation
+}
+
+colnames(rda_cands)[11] <- "predictor"
+colnames(rda_cands)[12] <- "correlation"
+
+table(rda_cands$predictor) 
+```
+
+# Identify which variables SNPs are highly correlated with (>0.65)
+```{r}
+## add factor for correlation for each candidate SNP
+ccoef <- 0.5 # correlation threshold
+rda_cands <- rda_cands %>% mutate(cor = NA) 
+for (i in 1:length(rda_cands$snp)){
+        rda_cands[i, "cor"] <- case_when(abs(rda_cands[i, "clt_min"]) < ccoef
+                                        & abs(rda_cands[i, "elevation_30sec"]) < ccoef
+                                        & abs(rda_cands[i, "bio3"]) < ccoef
+                                        & abs(rda_cands[i, "bio4"]) < ccoef
+                                        & abs(rda_cands[i, "bio9"]) < ccoef
+                                        & abs(rda_cands[i, "bio18"]) < ccoef
+                                        & abs(rda_cands[i, "cmi_range"]) < ccoef ~ "none",
+                                        abs(rda_cands[i, "clt_min"]) >= ccoef ~ "clt_min", 
+                                        abs(rda_cands[i, "elevation_30sec"]) >= ccoef ~ "alt",
+                                        abs(rda_cands[i, "bio18"]) >= ccoef ~ "bio18",
+                                        abs(rda_cands[i, "bio3"]) >= ccoef ~ "bio3",
+                                        abs(rda_cands[i, "bio9"]) >= ccoef ~ "bio9",
+                                        abs(rda_cands[i, "bio4"]) >= ccoef ~ "bio4",
+                                        abs(rda_cands[i, "cmi_range"]) >= ccoef ~ "cmi_range")
+}
+
+for (i in 1:length(rda_cands$snp)){
+        test <- length(abs(rda_cands[i, "clt_min"]) >= ccoef)
+}
+```
+
+## Make variable correlation SNP plots
+```{r}
+apply(rda_cands[,4:10], MARGIN = 2, function(x){which.max(abs(x))})
+#         clt_min elevation_30sec            bio4           bio18            bio9 
+#             670            1751              11            1494            1820 
+#       cmi_range            bio3 
+#            1187            1795 
+
+bio3 <- as.character(rda_cands[1795, "snp"])
+bio4 <- as.character(rda_cands[11, "snp"])
+bio9 <- as.character(rda_cands[11, "snp"])
+bio18 <- as.character(rda_cands[1494, "snp"])
+alt <- as.character(rda_cands[1751, "snp"])
+clt_min <- as.character(rda_cands[670, "snp"])
+cmi_range <- as.character(rda_cands[1187, "snp"])
+
+dat <- data.frame(cbind(perloc$cluster, cond_env, freq_l1[, bio3], freq_l1[, bio4], freq_l1[, bio9], freq_l1[, bio18], freq_l1[, alt], freq_l1[, clt_min], freq_l1[, cmi_range]))
+colnames(dat) <- c("cluster", colnames(cond_env), "bio3.snp", "bio4.snp", "bio9.snp", "bio18.snp", "alt.snp", "clt_min.snp", "cmi_range.snp")
+dat$cluster <- as.factor(dat$cluster)
+## Plot environmental variable against allele frequency at most correlated SNP using non-transformed values
+# ggplot(data.frame(cbind(select_env$bio3, freq_h[, bio3])), aes(x = X1, y = X2)) + geom_point() + geom_smooth(method = "lm")
+## bio3
+ggplot(dat, aes(x = bio3, y = bio3.snp)) + geom_point(cex=3.5, alpha=0.85, aes(colour = cluster, shape = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "BIO3 (Isothermality)", y = "Scaf. 7 Pos. 28990019")
+ggsave("rda/LD_pruned/bio3.png")
+## bio4
+ggplot(dat, aes(x = bio4, y = bio4.snp)) + geom_point(cex=3, alpha=0.85, aes(colour = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "BIO4 (Temperature Seasonality)", y = "Scaf. 4 Pos. 12296515")
+ggsave("rda/LD_pruned/bio4.png")
+## bio9
+ggplot(dat, aes(x = bio9, y = bio9.snp)) + geom_point(cex=3, alpha=0.85, aes(colour = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "BIO9 (Mean Temp. Driest Quarter)", y = "Scaf. 1 Pos. 12296515")
+ggsave("rda/LD_pruned/bio9.png")
+## bio18
+ggplot(dat, aes(x = bio18, y = bio18.snp)) + geom_point(cex=3, alpha=0.85, aes(colour = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "BIO18 (Mean Precip. Warmest Quarter)", y = "Scaf. 39 Pos. 20055")
+ggsave("rda/LD_pruned/bio18.png")
+## Altitude
+ggplot(dat, aes(x = elevation_30sec, y = alt.snp)) + geom_point(cex=3, alpha=0.85, aes(colour = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "Altitude", y = "Scaf. 5 Pos. 140615624")
+ggsave("rda/LD_pruned/alt.png")
+## clt min
+ggplot(dat, aes(x = clt_min, y = clt_min.snp)) + geom_point(cex=3, alpha=0.85, aes(colour = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "Min. Cloud Area Cover", y = "Scaf. 9 Pos. 40013955")
+ggsave("rda/LD_pruned/clt_min.png")
+## cmi range
+ggplot(dat, aes(x = cmi_range, y = cmi_range.snp)) + geom_point(cex=3, alpha=0.85, aes(colour = cluster)) + scale_color_manual(values = bg, labels = clust_labs) + scale_shape_manual(values = c(15,16,17,18,19), guide = FALSE)+ geom_smooth(method = "lm", se = FALSE) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 3), panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 16, colour = "black", family = "sans", face = "plain")) +
+        labs(color = "Genomic Cluster", x = "Climate Moisture Index Range", y = "Scaf. 4 Pos. 252074332")
+ggsave("rda/LD_pruned/cmi-range.png")
+```
+
+# Identify candidate SNPs also ID'd by LFMM
+```{r}
+## Load candidate SNPs ID'd by LFMM
+lfmm_cands <- read_csv("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/gea/lfmm/LD-pruned/PCA/lfmm-candidate-SNPs.csv")
+
+shared <- cands[cands$snp %in% lfmm_cands$marker_pos,]
+write.table(shared, "shared-dbRDA-lfmm-cands.tsv", quote = FALSE, row.names = FALSE, col.names = TRUE)
+shared <- read_table("shared-dbRDA-lfmm-cands.tsv")
+```
+
+```{r}
+loadings <- data.frame(loadings)
+loadings$snp_name <- rownames(loadings)
+loadings$snp_name <- gsub("\\..*", "", loadings$snp_name)
+
+loadings$RDA1.2 <- loadings$RDA1^2
+loadings$RDA2.2 <- loadings$RDA2^2
+loadings$RDA3.2 <- loadings$RDA3^2
+
+loadings <- loadings %>% 
+  separate(col = snp_name, into = c("Scaf", "Scaf_no", "pos", "integer"),
+           sep = "_")
+
+shared <- shared %>% separate(col = "snp", into = c("Scaf", "Scaf_no", "pos", "integer"), sep = "_")
+
+# to avoid a lot of bins
+loadings$Scaf_no <- as.numeric(loadings$Scaf_no)
+loadings$Scaf_no[loadings$Scaf_no > 18] <- "scaffolds"
+loadings$Scaf_no <- as.factor(loadings$Scaf_no)
+
+# find chromosome medians
+chrom_med <- loadings %>% 
+        group_by(Scaf_no) %>% 
+        summarize(median=median(as.numeric(integer)))
+
+## outlier definition boundary
+rda1_bound <- min((mean(loadings$RDA1) + c(-1, 1) * 3.5 * sd(loadings$RDA1))^2)
+rda1_plot <- ggplot() + geom_point(data = loadings, aes(x = as.numeric(integer), y = as.numeric(RDA1.2), color = fct_inorder(Scaf_no, ordered = NA)),
+                alpha = 0.7, size = 0.75, pch = 21) +
+        geom_point(data = shared[shared$axis == 1,], aes(x = as.numeric(integer), y = as.numeric(loading)^2), color = "red", size = 1) +
+        geom_hline(yintercept = rda1_bound, linetype = "dashed", color = "black", size = 0.5) +
+        scale_color_manual(values = c("gray80", "skyblue2","gray80", "skyblue2","gray80", "skyblue2","gray80",
+            "skyblue2","gray80", "skyblue2","gray80", "skyblue2", "gray80", "skyblue2",
+            "gray80", "skyblue2","gray80", "skyblue2","gray80")) +
+        scale_x_continuous(limits=c(1,39427), expand=c(0, 0), breaks=chrom_med$median, labels=chrom_med$Scaf_no) +
+          labs(x = "Chromosome", y = "RDA1^2") +
+        theme(axis.ticks.x=element_blank(), plot.title = element_text(size = 5), axis.title=element_text(size = 10),
+                axis.text=element_text(size = 8), plot.background = element_rect(fill = "white", color = "white"),
+                panel.background=element_rect(fill = "white", color = "white"), legend.position = "none")
+ggsave("RDA1_shared_candidate_SNPs.pdf")
+
+rda2_bound <- min((mean(loadings$RDA2) + c(-1, 1) * 3.5 * sd(loadings$RDA2))^2)
+rda2_plot <- ggplot() + geom_point(data = loadings, aes(x = as.numeric(integer), y = as.numeric(RDA2.2), color = fct_inorder(Scaf_no, ordered = NA)),
+                alpha = 0.7, size = 0.75, pch = 21) +
+        geom_point(data = shared[shared$axis == 2,], aes(x = as.numeric(integer), y = as.numeric(loading)^2), color = "red", size = 1) +
+        geom_hline(yintercept = rda2_bound, linetype = "dashed", color = "black", size = 0.5) +
+        scale_color_manual(values = c("gray80", "skyblue2","gray80", "skyblue2","gray80", "skyblue2","gray80",
+            "skyblue2","gray80", "skyblue2","gray80", "skyblue2", "gray80", "skyblue2",
+            "gray80", "skyblue2","gray80", "skyblue2","gray80")) +
+        scale_x_continuous(limits=c(1,39427), expand=c(0, 0), breaks=chrom_med$median, labels=chrom_med$Scaf_no) +
+          labs(x = "Chromosome", y = "RDA2^2") +
+        theme(axis.ticks.x=element_blank(), plot.title = element_text(size = 5), axis.title=element_text(size = 10),
+                axis.text=element_text(size = 8), plot.background = element_rect(fill = "white", color = "white"),
+                panel.background=element_rect(fill = "white", color = "white"), legend.position = "none")
+ggsave("RDA2_shared_candidate_SNPs.pdf")
+
+rda3_bound <- min((mean(loadings$RDA3) + c(-1, 1) * 3.5 * sd(loadings$RDA3))^2)
+rda3_plot <- ggplot() + geom_point(data = loadings, aes(x = as.numeric(integer), y = as.numeric(RDA3.2), color = fct_inorder(Scaf_no, ordered = NA)),
+                alpha = 0.7, size = 0.75, pch = 21) +
+        geom_point(data = shared[shared$axis == 3,], aes(x = as.numeric(integer), y = as.numeric(loading)^2), color = "red", size = 1) +
+        geom_hline(yintercept = rda3_bound, linetype = "dashed", color = "black", size = 0.5) +
+        scale_color_manual(values = c("gray80", "skyblue2","gray80", "skyblue2","gray80", "skyblue2","gray80",
+            "skyblue2","gray80", "skyblue2","gray80", "skyblue2", "gray80", "skyblue2",
+            "gray80", "skyblue2","gray80", "skyblue2","gray80")) +
+        scale_x_continuous(limits=c(1,39427), expand=c(0, 0), breaks=chrom_med$median, labels=chrom_med$Scaf_no) +
+          labs(x = "Chromosome", y = "RDA3^2") +
+        theme(axis.ticks.x=element_blank(), plot.title = element_text(size = 5), axis.title=element_text(size = 10),
+                axis.text=element_text(size = 8), plot.background = element_rect(fill = "white", color = "white"),
+                panel.background=element_rect(fill = "white", color = "white"), legend.position = "none")
+ggsave("RDA3_shared_candidate_SNPs.pdf")
+
+final_plot <- plot_grid(rda1_plot, rda2_plot, rda3_plot, ncol = 1)
+ggsave("~/Dropbox/Apps/Overleaf/Anolis distichus Population Genomics ms/figures/candidate-SNP-manhattan-plots.pdf", final_plot, dpi = 700)
+```
+
+```{r}
+# gff <- read.gff("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ref-alignment-assembly/genome/final_dist_annotation/Final_Sorted_Gff.gff")
+# gr <- makeGRangesFromDataFrame(gff)
+gff <- "~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ref-alignment-assembly/genome/final_dist_annotation/Final_Sorted_Gff.gff"
+annot <- import.gff(gff)
+gr <- as(annot, "GRanges")
+
+shared <- data.frame(shared[order(shared$Scaf_no, decreasing = F), ])
+hits <- matrix(ncol = 9)
+
+for (i in 1:length(shared$pos)){
+        position <- as.numeric(shared[i, "pos"])
+        chrom <- shared[i, "Scaf_no"]
+
+        chrom_gen <- gff[gff$seqid == paste0(chrom),]
+
+        gene <- data.table::between(position, chrom_gen[, "start"], chrom_gen[, "end"])
+
+        hits <- chrom_gen[gene, ]
+
+        if (nrow(hits) > 0){
+                print(paste("For chromosome", chrom, "at position", position, "there is a gene"))
+                assign(paste0(chrom, "_", position), hits)
+        }
+}
+
+query_pos <- paste0(shared$Scaf_no, ":", shared$pos)
+
+# Convert positions to GRanges
+query_gr <- GRanges(seqnames = sapply(strsplit(query_pos, ":"), "[", 1),
+                    ranges = IRanges(start = as.numeric(sapply(strsplit(query_pos, ":"), "[", 2)),
+                                     end = as.numeric(sapply(strsplit(query_pos, ":"), "[", 2))))
+
+# Function to find the closest feature for a single position
+find_closest_feature <- function(position, annotation_gr) {
+  distances <- distanceToNearest(position, annotation_gr)
+  closest_feature_index <- which.min(distances)
+  closest_feature <- annotation_gr[closest_feature_index]
+  return(closest_feature)
+}
+
+find_closest_feature <- function(position, annotation_gr) {
+  distances <- distanceToNearest(position, annotation_gr)
+  
+  # Find the hit with the minimum distance
+  closest_feature_hit <- subjectHits(distances)[which.min(data.frame(values(distances)))]
+  
+  # Extract the closest feature
+  closest_feature <- annotation_gr[closest_feature_hit]
+  
+  return(closest_feature)
+}
+
+# Find the closest feature for each position
+closest_features <- lapply(query_pos, function(pos) {
+  pos_as_gr <- GRanges(seqnames = sapply(strsplit(pos, ":"), "[", 1),
+                       ranges = IRanges(start = as.numeric(sapply(strsplit(pos, ":"), "[", 2)),
+                                        end = as.numeric(sapply(strsplit(pos, ":"), "[", 2))))
+  find_closest_feature(pos_as_gr, gr)
+})
+
+
+feature_data <- lapply(closest_features, function(x) {
+  as.data.frame(x)
+})
+feature_df <- do.call(rbind, feature_data)
+feature_df$SNP <- query_pos
+# write.table(feature_df, "shared-candidate-SNPs-annotation-included.tsv", quote=F, row.names=F, col.names=T)
+save(feature_df, file="shared-candidate-SNPs-annotation-included.RData")
+```

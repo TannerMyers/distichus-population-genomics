@@ -1,0 +1,353 @@
+---
+title: "Environmental variable download, cleaning, and analysis"
+author: "Tanner C. Myers, Pietro L. H. de Mello, Paul M. Hime, and Richard E. Glor"
+date: "8/22/2023"
+output: html_document
+---
+
+
+# Load R packages
+```{r}
+work_dir <- "/scratch/tcm0036/distichus-ddRAD/analyses/AnoDist/gea"
+setwd(work_dir)
+
+library(sf)
+library(terra)
+library(sp)
+library(geodata)
+library(tidyverse)
+library(ade4)
+library(factoextra)
+library(cowplot)
+library(grid)
+library(gridExtra)
+
+# Load shapefile of Hispaniola for masking rasters
+hispaniola <- st_read(dsn = "~/distichus-spatial-variation/data/shape-files/")
+```
+
+# Download, crop, and mask CHELSA climate raster layers
+```{r}
+# Make directories
+dir.create("env-data")
+dir.create("env-data/raw-vars")
+dir.create("env-data/raw-vars/chelsa")
+dir.create("env-data/masked")
+dir.create("env-data/masked/chelsa")
+
+# Download raw files available here: https://chelsa-climate.org/bioclim/
+# NOTE: Be careful, these comprise 48 files and 13 total gigabytes of data
+#system("wget -i ~/distichus-ddRAD/gea/envidatS3paths.txt -P /scratch/tcm0036/distichus-ddRAD/analyses/AnoDist/gea/env-data/raw-vars/chelsa/")
+
+# Load downloaded CHELSA raster layers into R
+#env <- rast(list.files("env-data/raw-vars/chelsa", pattern = "CHELSA", full.names = TRUE))
+## extents differ? Load different variable types and ID culprit
+bioclim <- rast(list.files("env-data/raw-vars/chelsa/", pattern = "_bio", full.names = TRUE))
+sfc <- rast(list.files(path = "env-data/raw-vars/chelsa/", pattern = "_sfcWind", full.names = TRUE))
+hurs <- rast(list.files(path = "env-data/raw-vars/chelsa/", pattern = "_hurs", full.names = TRUE))
+clt <- rast(list.files(path = "env-data/raw-vars/chelsa/", pattern = "_clt", full.names = TRUE)) ## Ding, ding, ding!
+cmi <- rast(list.files(path = "env-data/raw-vars/chelsa", pattern = "_cmi", full.names = TRUE))
+vpd <- rast(list.files(path = "env-data/raw-vars/chelsa", pattern = "_vpd", full.names = TRUE))
+pet <- rast(list.files(path = "env-data/raw-vars/chelsa", pattern = "_pet", full.names = TRUE))
+rsds <- rast(list.files(path = "env-data/raw-vars/chelsa", pattern = "_rsds", full.names = TRUE)) # same extent, but produces warning
+swb <- rast(list.files(path = "env-data/raw-vars/chelsa", pattern = "_swb", full.names = TRUE))
+
+glob_clim <- c(bioclim, pet, rsds, cmi, hurs, swb, sfc, vpd)
+clt <- terra::resample(x = clt, y = glob_clim) # fix reduced resolution of clt rasters
+glob_clim <- c(glob_clim, clt)
+
+crop_clim <- crop(glob_clim, ext(hispaniola))
+mask_clim <- mask(crop_clim, hispaniola)
+
+# write masked rasters to files
+lapply(names(mask_clim), function(x) {
+    writeRaster(mask_clim[[x]], paste0("env-data/masked/chelsa/", x, ".asc"), overwrite = TRUE)
+})
+```
+
+# Prepare elevation raster at same resolution (30 arc seconds/1 km)
+```{r}
+# Download elevation data from `geodata" package
+hti_alt <- elevation_30s(country="HTI", path = "env-data/raw-vars/")
+dom_alt <- elevation_30s(country = "DOM", path = "env-data/raw-vars/")
+hisp_alt <- merge(hti_alt, dom_alt)
+
+hisp_alt <- mask(hisp_alt, hispaniola)
+
+writeRaster(hisp_alt, "env-data/masked/elevation_30sec.asc", overwrite = TRUE)
+```
+
+# Prepare mean wet and dry season vegetation index rasters
+```{r}
+# Create directories
+dir.create("env-data/raw-vars/modis")
+dir.create("env-data/raw-vars/modis/may")
+dir.create("env-data/raw-vars/modis/march")
+dir.create("env-data/masked/modis")
+
+# Wet season (should have 11 files)
+may_evi <- rast(list.files(path = "env-data/raw-vars/modis/may", pattern = "_monthly_EVI_doy20", full.name = TRUE))
+may_ndvi <- rast(list.files(path = "env-data/raw-vars/modis/may", pattern = "_monthly_NDVI_doy20", full.names = TRUE))
+
+# Dry season (should have 11 files)
+march_evi <- rast(list.files(path = "env-data/raw-vars/modis/march", pattern = "_monthly_EVI_doy20", full.names = TRUE))
+march_ndvi <- rast(list.files(path = "env-data/raw-vars/modis/march", pattern = "_monthly_NDVI_doy20", full.names = TRUE))
+
+# estimate mean for each layer that represent a year
+may_evi_mean <- app(may_evi, mean)
+may_ndvi_mean <- app(may_ndvi, mean)
+
+march_evi_mean <- app(march_evi, mean)
+march_ndvi_mean <- app(march_ndvi, mean)
+
+# now, mask
+wet_evi <- mask(may_evi_mean, hispaniola)
+wet_ndvi <- mask(may_ndvi_mean, hispaniola)
+dry_evi <- mask(march_evi_mean, hispaniola)
+dry_ndvi <- mask(march_ndvi_mean, hispaniola)
+
+# For ease of writing to files, concatenate into single SpatRaster
+modis <- c(wet_evi, wet_ndvi, dry_evi, dry_ndvi)
+names(modis) <- c("wet_season_EVI", "wet_season_NDVI", "dry_season_EVI", "dry_season_NDVI")
+
+lapply(names(modis), function(x){
+    writeRaster(modis[[x]], paste0("env-data/masked/modis/", x, ".asc"), overwrite = TRUE)
+})
+```
+
+# Extract values from rasters
+```{r}
+ RAD_data <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/info/distichus-species-group-Hispaniola-only-popmap-cleaned.tsv", 
+                col_names = c("specimen", "specimen_pop", "filepath", "subspecies", "population", "complex", "island", "locality", "longitude", "latitude", "note"))
+
+coords <- RAD_data[, c("longitude", "latitude")]
+
+# Extract values
+clim <- as_tibble(cbind(RAD_data$locality, coords, terra::extract(mask_clim, coords, ID = FALSE)))
+veg <- as_tibble(cbind(RAD_data$locality, coords, terra::extract(modis, coords, ID = FALSE)))
+alt <- as_tibble(cbind(RAD_data$locality, coords, terra::extract(hisp_alt, coords, ID = FALSE)))
+
+# There are NAs -- impute only cells with NAs separately for each source of data
+#probs <- distinct(rbind(clim[!complete.cases(clim), 1:3], alt[!complete.cases(alt), 1:3], veg[!complete.cases(veg), 1:3]))
+imp_clim <- as_tibble(cbind(clim[!complete.cases(clim), 1:3], terra::extract(mask_clim, clim[!complete.cases(clim), 2:3], ID = FALSE, method = "bilinear")))
+imp_alt <- as_tibble(cbind(alt[!complete.cases(alt), 1:3], terra::extract(hisp_alt, alt[!complete.cases(alt), 2:3], ID = FALSE, method = "bilinear")))
+imp_veg <- as_tibble(cbind(veg[!complete.cases(veg), 1:3], terra::extract(modis, veg[!complete.cases(veg), 2:3], ID = FALSE, method = "bilinear")))
+
+clim[!complete.cases(clim), 4:51] <- imp_clim[, 4:51]
+veg[!complete.cases(veg), 4:7] <- imp_veg[, 4:7]
+alt[!complete.cases(alt), 4] <- imp_alt[, 4]
+
+env_df <- as_tibble(data.frame(cbind(clim, veg[, -c(1:3)], alt[, -c(1:3)])))
+
+# Rename columns to simplify
+new_names <- colnames(env_df) %>% str_replace("CHELSA_", "") %>% str_replace("_1981.2010_V.2.1", "")
+colnames(env_df) <- new_names
+write.table(env_df, file = "env-data/environmental-variables-raw.tsv", col.names = TRUE, row.names = FALSE, quote = FALSE)
+```
+
+# Assess variables for normality and transform
+```{r}
+sw <- apply(env_df[4:ncol(env_df)], 2, shapiro.test)
+
+sig <- lapply(names(sw), function(x){
+        sw[[x]]$p.value > 0.05
+})
+
+# log-transform everything
+log_env <- apply(env_df[4:ncol(env_df)], 2, function(x){
+    if (min(x) < 0){
+        log(x + abs(min(x)) + 1) # Some variables have negative values
+    } else {
+        log(x)
+    }
+})
+
+unscaled_env <- cbind(env_df[, 1:3], log_env)
+full_env <- as_tibble(cbind(env_df[, 1:3], scale(unscaled_env[, 4:ncol(unscaled_env)])))
+write.table(full_env, "env-data/environment-log-scaled.tsv", col.names = TRUE, row.names = FALSE, quote = FALSE)
+```
+
+## Figure 6 - SNP correlation variables
+```{r}
+alt <- rast("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/gea/env-data/masked/elevation_30sec.asc")
+bio4 <- rast("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/gea/env-data/masked/CHELSA_bio4_1981-2010_V.2.1.asc")
+bio18 <- rast("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/gea/env-data/masked/CHELSA_bio18_1981-2010_V.2.1.asc")
+pal_grays <- hcl.colors(1000, "Grays")
+pal_grays <- rev(pal_grays)
+
+# altitude
+ggplot(data = RAD_data, aes(x = longitude, y = latitude)) + 
+        geom_spatraster(data = alt, alpha = 1, show.legend = FALSE) + scale_fill_gradientn(colours = pal_grays, na.value = NA) +
+        geom_point(aes(color = cluster), size = 8, show.legend = FALSE) +
+        scale_color_manual(values = c("dodgerblue1", "sienna", "yellow", "gray80", "orangered")) +
+        geom_point(size = 8, shape = 21, color = "black") + #theme_light() + theme(axis.title = element_blank())
+        theme(panel.background = element_rect(fill = "white"), axis.title = element_blank(),
+            axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+            axis.text.x = element_blank(), axis.text.y = element_blank())
+ggsave("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ms-figures/alt.pdf")      
+
+# bio4
+ggplot(data = RAD_data, aes(x = longitude, y = latitude)) + 
+        geom_spatraster(data = bio4, alpha = 1, show.legend = FALSE) + scale_fill_gradientn(colours = pal_grays, na.value = NA) +
+        geom_point(aes(color = cluster), size = 8, show.legend = FALSE) +
+        scale_color_manual(values = c("dodgerblue1", "sienna", "yellow", "gray80", "orangered")) +
+        geom_point(size = 8, shape = 21, color = "black") + #theme_light() + theme(axis.title = element_blank())
+        theme(panel.background = element_rect(fill = "white"), axis.title = element_blank(),
+            axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+            axis.text.x = element_blank(), axis.text.y = element_blank())
+ggsave("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ms-figures/bio4.pdf")
+
+# BIO18
+ggplot(data = RAD_data, aes(x = longitude, y = latitude)) + 
+        geom_spatraster(data = bio18, alpha = 1, show.legend = FALSE) + scale_fill_gradientn(colours = pal_grays, na.value = NA) +
+        geom_point(aes(color = cluster), size = 8, show.legend = FALSE) +
+        scale_color_manual(values = c("dodgerblue1", "sienna", "yellow", "gray80", "orangered")) +
+        geom_point(size = 8, shape = 21, color = "black") + #theme_light() + theme(axis.title = element_blank())
+    theme(panel.background = element_rect(fill = "white"), axis.title = element_blank(),
+        axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+        axis.text.x = element_blank(), axis.text.y = element_blank())
+ggsave("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/ms-figures/bio18.pdf")
+```
+
+# Run PCA on environment variables
+```{r}
+data <- as_tibble(cbind(RAD_data, env_df[, 4:ncol(env_df)]))
+pca <- dudi.pca(data[, 12:ncol(data)], center = TRUE, scale = TRUE, scannf = FALSE, nf = 3)
+
+round(100*(pca$eig/sum(pca$eig)), 2) # variation explained
+pve <- fviz_eig(pca, addlabels = TRUE, ylim = c(0, 45))
+
+    pca$c1 # loadings
+
+# Use population structure figure cluster assignments to color sampling localities
+adm_Q <- read_table("~/Dropbox/Distichus_Project/ddRADseq_Phylogeography/AnoDist_aln/population-structure/ADMIXTURE_PCA/geno90/distichus_geno90_filtered_LD_50kb_100_0.1_ready.5.Q", col_names = FALSE)
+    cluster <- apply(adm_Q, 1, which.max)
+
+pc_df <- as_tibble(cbind(RAD_data[, c("specimen_pop", "locality", "longitude", "latitude")], cluster, pca$li))
+
+myColors <- c("dodgerblue1", "sienna", "yellow", "gray80", "orangered")
+col_labs <- c("South Paleo-island", "Eastern A. d. dominicensis", "A. d. ravitergum", "A. d. properus", "A. d. ignigularis")
+
+p12 <- ggplot(data = pc_df, aes(x = Axis1, y = Axis2, color = as.factor(cluster), alpha = 0.85)) +
+    geom_point(cex = 3, show.legend = FALSE) + stat_ellipse(show.legend = FALSE) +
+    scale_color_manual(values = myColors, labels = col_labs,
+        guide = guide_legend(label.theme = element_blank())) +
+    guides(alpha = "none") +
+    labs(color = "Cluster", x = "Axis 1 (39.59% of variation)", y = "Axis 2 (17.57% of variation)") + # UDPATE values if needed
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 3),
+    axis.title = element_text(size = 18, colour = "black", family = "Helvetica", face = "bold")) +
+    theme_bw()
+p23 <- ggplot(data = pc_df, aes(x = Axis2, y = Axis3, color = as.factor(cluster), alpha = 0.85)) +
+    geom_point(cex = 3, show.legend = FALSE) + stat_ellipse(show.legend = FALSE) +
+    scale_color_manual(values = myColors, labels = col_labs,
+        guide = guide_legend(label.theme = element_text(angle = 0, face = "italic"))) +
+    guides(alpha = "none") +
+    labs(color = "Cluster", x = "Axis 2 (17.57% of variation)", y = "Axis 3 (11.59% of variation)") + # UDPATE values if needed
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 3),
+    axis.title = element_text(size = 18, colour = "black", family = "Helvetica", face = "bold")) +
+    theme_bw()
+p13 <- ggplot(data = pc_df, aes(x = Axis1, y = Axis3, color = as.factor(cluster), alpha = 0.85)) +
+    geom_point(cex = 3, show.legend = FALSE) + stat_ellipse(show.legend = FALSE) +
+    scale_color_manual(values = myColors, labels = col_labs,
+        guide = guide_legend(label.theme = element_blank())) +
+    guides(alpha = "none") +
+    labs(color = "Cluster", x = "Axis 2 (39.59% of variation)", y = "Axis 3 (11.59% of variation)") + # UDPATE values if needed
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 3),
+    axis.title = element_text(size = 18, colour = "black", family = "Helvetica", face = "bold")) +
+    theme_bw()
+row1 <- plot_grid(p12, p13, ncol = 2, nrow = 1)
+row2 <- plot_grid(p23, legend, pve, rel_widths = c(3, 1, 2), nrow = 1, ncol = 3)
+plot_grid(row1, row2, nrow = 2, byrow = TRUE)
+ggsave("~/Dropbox/Apps/Overleaf/Anolis distichus Population Genomics ms/supp-mat/environmental-pca.pdf")
+```
+
+# Load environmental variables and explore collinearity
+```{r}
+full_env <- read_table("env-data/environment-log-scaled.tsv")
+
+# Shows scatter plots, histograms, and Pearson"s correlation coefficients. Really ugly for this number of variables
+pdf("env-data/pairs-panel-plot.pdf", width = 30, height = 30)
+    pairs.panels(full_env[, 4:ncol(full_env)], scale = TRUE)
+dev.off()
+
+pdf("env-data/corrplot.pdf", width = 30, height = 30)
+corrplot(cor(full_env[, 4:ncol(full_env)]), type = "upper")
+dev.off()
+
+# Estimate Variance Influence Factors (VIFs) for each of the predictors
+## `vifcor` function of the `usdm` package estimates VIFs by finding
+## the pair with a maximum linear correlation and excludes
+## the one with the greater VIF until no variable
+## pair with a high correlation coefficient remains
+vifcor <- usdm::vifcor(x = as.matrix(full_env[, 4:ncol(full_env)]), th = 0.9, method = "pearson")
+
+## `vifstep` function of the `usdm` package estimates VIFs
+## all at once, excluding the one with the highest VIF,
+## repeating until no variables
+## with VIF higher than th remains
+vifstep <- usdm::vifstep(x = as.matrix(full_env[, 4:ncol(full_env)]), th = 10, method = "pearson")
+
+
+sel_env <- as_tibble(cbind(full_env[, 1:3], full_env[, vifstep@results$Variables]))
+write.table(sel_env, "selected-environmental-variables.tsv", quote = FALSE, col.names = TRUE, row.names = FALSE)
+```
+
+```{r}
+sel_env <- read_table("selected-environmental-variables.tsv")
+## Filter variables to include only forward-selected environmental variables
+ordi_vars <- c("clt_min", "elevation_30sec", "bio4", "bio18", "bio9", "cmi_range", "bio3")
+sel_env <- sel_env[ordi_vars]
+
+pca <- dudi.pca(sel_env, center = TRUE, scale = TRUE, scannf = FALSE, nf = 3)
+round(100*(pca$eig/sum(pca$eig)), 2) # variation explained
+pve <- fviz_eig(pca, addlabels = TRUE, ylim = c(0, 45))
+
+    pca$c1 # loadings
+#                        CS1         CS2         CS3
+# clt_min         -0.1663960  0.60402914 -0.17738840
+# elevation_30sec -0.5173283 -0.21984513 -0.21436439
+# bio4            -0.1897373  0.50858056 -0.46324442
+# bio18           -0.4231809 -0.03582881  0.58556290
+# bio9             0.5318651  0.23777316  0.04820212
+# cmi_range       -0.3386439  0.43179788  0.41186898
+# bio3            -0.3033831 -0.28964383 -0.43947976
+
+pc_df <- as_tibble(cbind(RAD_data[, c("specimen_pop", "locality", "longitude", "latitude")], cluster, pca$li))
+    write.table(pc_df, "fwd-select-env-pc1-3.tsv", quote = FALSE, col.names = TRUE, row.names = FALSE)
+
+myColors <- c("dodgerblue1", "sienna", "yellow", "gray80", "orangered")
+clust_labs <- c(expression("West "*italic("A. distichus")), expression("East "*italic("A. d. dominicensis")),
+                expression(italic("A. d. ravitergum")), expression(italic("A. d. properus")), expression(italic("A. d. ignigularis")))
+
+p12 <- ggplot(data = pc_df, aes(x = Axis1, y = Axis2, color = as.factor(cluster), alpha = 0.85)) +
+    geom_point(cex = 3, show.legend = FALSE) + stat_ellipse(show.legend = FALSE) +
+    scale_color_manual(values = myColors, labels = clust_labs,
+        guide = guide_legend(label.theme = element_blank())) +
+    guides(alpha = "none") +
+    labs(color = "Cluster", x = "Axis 1 (34.44% of variation)", y = "Axis 2 (29.07% of variation)") + # UDPATE values if needed
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 3),
+    axis.title = element_text(size = 18, colour = "black", family = "Helvetica", face = "bold")) +
+    theme_bw()
+p23 <- ggplot(data = pc_df, aes(x = Axis2, y = Axis3, color = as.factor(cluster), alpha = 0.85)) +
+    geom_point(cex = 3, show.legend = FALSE) + stat_ellipse(show.legend = FALSE) +
+    scale_color_manual(values = myColors, labels = clust_labs,
+        guide = guide_legend(label.theme = element_text(angle = 0, face = "italic"))) +
+    guides(alpha = "none") +
+    labs(color = "Cluster", x = "Axis 2 (29.07% of variation)", y = "Axis 3 (15.58% of variation)") + # UDPATE values if needed
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 3),
+    axis.title = element_text(size = 18, colour = "black", family = "Helvetica", face = "bold")) +
+    theme_bw()
+p13 <- ggplot(data = pc_df, aes(x = Axis1, y = Axis3, color = as.factor(cluster), alpha = 0.85)) +
+    geom_point(cex = 3, show.legend = FALSE) + stat_ellipse(show.legend = FALSE) +
+    scale_color_manual(values = myColors, labels = clust_labs,
+        guide = guide_legend(label.theme = element_blank())) +
+    guides(alpha = "none") +
+    labs(color = "Cluster", x = "Axis 1 (34.44% of variation)", y = "Axis 3 (15.58% of variation)") + # UDPATE values if needed
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 3),
+    axis.title = element_text(size = 18, colour = "black", family = "Helvetica", face = "bold")) +
+    theme_bw()
+row1 <- plot_grid(p12, p13, ncol = 2, nrow = 1)
+row2 <- plot_grid(p23, legend, pve, rel_widths = c(3, 1, 2), nrow = 1, ncol = 3)
+plot_grid(row1, row2, nrow = 2, byrow = TRUE)
+ggsave("fwd-selected-env-pca-biplots.pdf")
+```
